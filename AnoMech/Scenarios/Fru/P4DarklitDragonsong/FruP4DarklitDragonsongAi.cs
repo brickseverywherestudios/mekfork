@@ -27,7 +27,7 @@ public sealed class FruP4DarklitDragonsongAi(bool playerBaitsSomberDance) : ISce
         state = stateParam;
         world = worldParam;
         swapped = SwapFreeWaterToItsGroup();
-        somberTank = ChooseSomberTank();
+        somberTank = state.SomberDanceTank ??= ChooseSomberTank();
         var ai = new AiManager(world);
         ai.Move(2f, () => ByRole(Middle), arrivalTime: 6.6f);
         ai.Move(6.65f, () => ByRole(OpeningSpread), arrivalTime: 8.8f);
@@ -58,8 +58,7 @@ public sealed class FruP4DarklitDragonsongAi(bool playerBaitsSomberDance) : ISce
         return world.Party.Get(PartyRole.MainTank) is { } mainTank && world.Party.IsBotDriven(mainTank) ? PartyRole.MainTank : PartyRole.OffTank;
     }
 
-    private Vector3 OraclePosition()
-        => world.Children.OfType<SimEnemy>().FirstOrDefault(e => e.BNpcBaseId == BNpcBaseId.OracleP4)?.Position ?? Vector3.Zero;
+    private Vector3 OraclePosition() => state.OracleLanding ?? OracleCenterSpot;
 
     private Vector3 JustPastOracleFromCenter()
     {
