@@ -36,6 +36,20 @@ public sealed class FruP3ApocalypseState
         SpiritTakerTarget = overrides.SpiritTakerTarget ?? rng.NextRole();
     }
 
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP3ApocalypseState? FromNetworkReplay(int rotation, bool clockwise, IReadOnlyList<int> waterDurations, PartyRole spiritTakerTarget)
+    {
+        if (rotation is < 0 or > 3 || !Enum.IsDefined(spiritTakerTarget)) return null;
+        if (waterDurations.Count != 8 || Enumerable.Range(0, 4).Any(d => waterDurations.Count(w => w == d) != 2)) return null;
+        return new FruP3ApocalypseState(Rng.Detached, new FruP3ApocalypseStateOverrides
+        {
+            Rotation = rotation,
+            Clockwise = clockwise,
+            WaterDurations = waterDurations.ToList(),
+            SpiritTakerTarget = spiritTakerTarget,
+        });
+    }
+
     public int WaterDuration(PartyRole role) => WaterDurations[(int)role];
 
     public IEnumerable<PartyRole> WaterHolders(int duration)

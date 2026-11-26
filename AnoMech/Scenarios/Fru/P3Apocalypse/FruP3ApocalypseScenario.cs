@@ -6,16 +6,18 @@ using AnoMech.Core.Game;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P3Apocalypse.FruP3ApocalypseState;
 using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P3Apocalypse;
 
-public sealed class FruP3ApocalypseScenario : IScenario
+public sealed class FruP3ApocalypseScenario : IMultiplayerReplayable
 {
     public string Name => "Apocalypse";
     public IPhase Phase => FruZone.P3;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP3ApocalypseAi(), new FruP3ApocalypseJpAi()];
 
@@ -28,6 +30,8 @@ public sealed class FruP3ApocalypseScenario : IScenario
 
     private SimWorld world = null!;
     private FruP3ApocalypseState state = null!;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP3ApocalypseState? lastState;
     private SimEnemy? oracle;
 
     private readonly List<SimEventObject?> centerLights = [];
@@ -48,6 +52,7 @@ public sealed class FruP3ApocalypseScenario : IScenario
     {
         world = worldParam;
         state = new FruP3ApocalypseState(world.Rng, settingsWindow.Overrides);
+        lastState = state;
         if (selectedAi is { } idx && idx < AiStrats.Count)
             ((IScenarioAi<FruP3ApocalypseState>)AiStrats[idx]).Run(state, world);
 
@@ -214,5 +219,18 @@ public sealed class FruP3ApocalypseScenario : IScenario
         danceLanding = offset.Length() > DanceLandingShort
             ? boss.Position + Vector3.Normalize(offset) * (offset.Length() - DanceLandingShort)
             : boss.Position;
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP3ApocalypseAiReplayStateMessage(s.Rotation, s.Clockwise, s.WaterDurations.ToArray(), s.SpiritTakerTarget)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
+    {
+        if (message is not FruP3ApocalypseAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP3ApocalypseState.FromNetworkReplay(msg.Rotation, msg.Clockwise, msg.WaterDurations, msg.SpiritTakerTarget) is not { } shadowState) return null;
+        ((IScenarioAi<FruP3ApocalypseState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
+        return shadowState;
     }
 }

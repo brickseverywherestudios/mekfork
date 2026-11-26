@@ -59,6 +59,7 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(UcobP5ExaflaresAiReplayStateMessage), "ucobP5ExaflaresAiReplayState")]
 [JsonDerivedType(typeof(UmadP5CelestriadAiReplayStateMessage), "umadP5CelestriadAiReplayState")]
 [JsonDerivedType(typeof(UltimateSuppressionAiReplayStateMessage), "ultimateSuppressionAiReplayState")]
+[JsonDerivedType(typeof(FruP3ApocalypseAiReplayStateMessage), "fruP3ApocalypseAiReplayState")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -298,6 +299,10 @@ public sealed record UltimateSuppressionAiReplayStateMessage(
 
 // InFirst is TopP6WaveCannon2Ai's entire read set.
 public sealed record TopP6WaveCannon2AiReplayStateMessage(bool InFirst) : MpMessage, IScenarioReplayStateMessage;
+
+// WaterDurations is indexed by PartyRole: 0 = no Dark Water, else its duration slot 1-3.
+public sealed record FruP3ApocalypseAiReplayStateMessage(
+    int Rotation, bool Clockwise, int[] WaterDurations, PartyRole SpiritTakerTarget) : MpMessage, IScenarioReplayStateMessage;
 
 // The whole state surface. GlitchType holds a Predicate (not JSON-friendly); it and
 // OmegaAttack travel as a bool naming the static instance.
