@@ -59,7 +59,8 @@ jobs:
           "version=$v" >> $env:GITHUB_OUTPUT
 
       - name: Build
-        run: dotnet build ${{ env.INTERNAL_NAME }}/${{ env.INTERNAL_NAME }}.csproj --configuration Release -p:Version=${{ steps.version.outputs.version }}
+        # The solution maps the plugin to x64, which DalamudPackager needs to produce latest.zip.
+        run: dotnet build AnoMech.sln --configuration Release -p:Version=${{ steps.version.outputs.version }}
 
       - name: Write repo.json
         id: package
