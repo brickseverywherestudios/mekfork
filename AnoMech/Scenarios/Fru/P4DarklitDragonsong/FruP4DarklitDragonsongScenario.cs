@@ -29,8 +29,6 @@ public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
     private readonly FruP4DarklitDragonsongSettingsWindow settingsWindow = new();
 
     private static readonly Vector3 FragmentPosition = new(0, 0, -16);
-    // The bosses stand ready this long before the timeline starts, so the party can engage first.
-    public const float PullLeadIn = 3f;
     // Curse chains stretched shorter than this snap. UNVERIFIED: retail's limit lies between 9.4 and 9.8.
     private const float CurseMinLength = 9.5f;
     // The Oracle's jumps land this short of their target, and don't move her when it's closer.
@@ -63,15 +61,10 @@ public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
         fragmentBroken = false;
         towers.Clear();
         akhRhaiPuddles.Clear();
-        world.Events.Add(0f, SpawnActors);
-        world.Events.Delayed(PullLeadIn, () => RunFight(selectedAi));
-    }
-
-    private void RunFight(int? selectedAi)
-    {
         if (selectedAi is { } idx && idx < AiStrats.Count)
             ((IScenarioAi<FruP4DarklitDragonsongState>)AiStrats[idx]).Run(state, world);
 
+        world.Events.Add(0f, SpawnActors);
         world.Events.Add(1f, () => usurper?.SetTarget(world.Party.Get(PartyRole.MainTank), follow: false));
         world.Events.Add(1f, () => oracle?.SetTarget(world.Party.Get(PartyRole.OffTank), follow: false));
         world.Events.Add(1.5f, () => usurper?.ActorControl.Transform(UsurperDragonBNpcState));
@@ -380,7 +373,7 @@ public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
         if (message is not FruP4DarklitDragonsongAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
         if (FruP4DarklitDragonsongState.FromNetworkReplay(msg.ChainedTank, msg.ChainedHealer, msg.DpsOrder, msg.Shape, msg.TetherWaterIndex,
                 msg.FreeWaterIndex, msg.SpiritTakerTarget, msg.EastWing, msg.SomberDanceTank) is not { } shadowState) return null;
-        replayWorld.Events.Delayed(PullLeadIn, () => ((IScenarioAi<FruP4DarklitDragonsongState>)AiStrats[aiIndex]).Run(shadowState, replayWorld));
+        ((IScenarioAi<FruP4DarklitDragonsongState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
         return shadowState;
     }
 
