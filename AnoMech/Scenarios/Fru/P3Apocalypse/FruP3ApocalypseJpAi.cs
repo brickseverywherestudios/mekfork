@@ -139,7 +139,7 @@ public sealed class FruP3ApocalypseJpAi : IScenarioAi<FruP3ApocalypseState>
         => AtOctant(ReferenceSpoke(PartyRole.OffTank) + AgainstTheLights, DanceBaitRadius);
 
     private Vector3 OraclePosition()
-        => world.Children.OfType<SimEnemy>().FirstOrDefault(e => e.BNpcBaseId == BNpcBaseId.OracleP3)?.Position ?? Vector3.Zero;
+        => world.Children.OfType<SimEnemy>().FirstOrDefault(e => e.IsActive && e.BNpcBaseId == BNpcBaseId.OracleP3)?.Position ?? Vector3.Zero;
 
     private Vector3? KnockbackStack(PartyRole role)
     {
