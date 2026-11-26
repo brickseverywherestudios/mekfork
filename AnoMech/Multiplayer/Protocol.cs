@@ -71,6 +71,8 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP3UltimateRelativityAiReplayStateMessage), "fruP3UltimateRelativityAiReplayState")]
 [JsonDerivedType(typeof(FruP2LightRampantAiReplayStateMessage), "fruP2LightRampantAiReplayState")]
 [JsonDerivedType(typeof(FruP2LightRampantSteepedUpdateMessage), "fruP2LightRampantSteepedUpdate")]
+[JsonDerivedType(typeof(FruP2DiamondDustAiReplayStateMessage), "fruP2DiamondDustAiReplayState")]
+[JsonDerivedType(typeof(FruP5ParadiseRegainedAiReplayStateMessage), "fruP5ParadiseRegainedAiReplayState")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -411,3 +413,8 @@ public sealed record FruP2LightRampantAiReplayStateMessage(
 
 // Everyone's Lightsteeped stacks: a peer's own character doesn't carry them in the sim.
 public sealed record FruP2LightRampantSteepedUpdateMessage(int Version, Dictionary<PartyRole, int> Stacks) : MpMessage, IScenarioMidRunUpdateMessage;
+
+public sealed record FruP2DiamondDustAiReplayStateMessage(int FirstIcicle, bool SupportsMarked, bool Axe, int MirrorOctant, bool Stillness, int GazeOctant)
+    : MpMessage, IScenarioReplayStateMessage;
+
+public sealed record FruP5ParadiseRegainedAiReplayStateMessage(int Rotation, bool EastSecond, bool DarkFirst) : MpMessage, IScenarioReplayStateMessage;
