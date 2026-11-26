@@ -181,7 +181,7 @@ public sealed class FruP4CrystallizeTimeAi : IScenarioAi<FruP4CrystallizeTimeSta
 
     private void ReactToClawCaught(SimCharacter bot, PartyRole role)
     {
-        var holds = bot.HasStatus(StatusId.Wyrmclaw);
+        var holds = state.HoldsWyrmclaw(role);
         if (holds) { holdingClaw.Add(role); return; }
         if (!holdingClaw.Remove(role) || state.Debuff(role) != CrystallizeDebuff.RedAero) return;
         var escape = state.East ? POST_EARLY_SOAK_E : POST_EARLY_SOAK_W;
@@ -190,7 +190,7 @@ public sealed class FruP4CrystallizeTimeAi : IScenarioAi<FruP4CrystallizeTimeSta
 
     private void ReactToFangCleansed(SimCharacter bot, PartyRole role)
     {
-        var holds = bot.HasStatus(StatusId.Wyrmfang);
+        var holds = state.HoldsWyrmfang(role);
         if (holds) { holdingFang.Add(role); return; }
         if (!holdingFang.Remove(role) || Elapsed >= StopCleansingAt) return;
         puddleTargets.Remove(role);

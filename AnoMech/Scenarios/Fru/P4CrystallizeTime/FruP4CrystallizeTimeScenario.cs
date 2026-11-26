@@ -53,7 +53,7 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
     // Polled by the multiplayer host; null until Run has rolled.
     private FruP4CrystallizeTimeState? lastState;
     // Edge-triggers BuildMidRunUpdateMessage.
-    private int puddlesVersionSent;
+    private int liveVersionSent;
     // A peer's strat and world, ticked by TickReplay since a peer never runs Tick.
     private IScenarioAi<FruP4CrystallizeTimeState>? replayAi;
     private SimWorld? replayWorld;
@@ -72,7 +72,7 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
         world = worldParam;
         state = new FruP4CrystallizeTimeState(world.Rng, world.Party.PlayerRole, settingsWindow.Overrides);
         lastState = state;
-        puddlesVersionSent = 0;
+        liveVersionSent = 0;
         Array.Clear(dragons);
         Array.Clear(dragonCatches);
         Array.Clear(lastCatcher);
@@ -254,6 +254,7 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
             var debuff = state.Debuff(role);
             var cleanseBy = debuff == CrystallizeDebuff.RedIce ? RedIceCleanseBy : CleanseBy;
             member.AddStatus(IsRed(debuff) ? StatusId.Wyrmclaw : StatusId.Wyrmfang, cleanseBy - DebuffsAt);
+            state.SetCleanseDebuffHeld(role, held: true);
             var (spell, at) = debuff switch
             {
                 CrystallizeDebuff.RedAero => (StatusId.DarkAeroWaiting, 25.9f),
@@ -434,7 +435,12 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
     }
 
     public void OnActionResolved(ActionResolved resolved) => BreakFragmentOnAvoidableHit(resolved);
-    public void OnStatusLost(StatusLost lost) => KillUncleansed(lost);
+    public void OnStatusLost(StatusLost lost)
+    {
+        if (lost is { StatusId: StatusId.Wyrmclaw or StatusId.Wyrmfang, Holder: ISimPartyMember holder })
+            state.SetCleanseDebuffHeld(holder.Role, held: false);
+        KillUncleansed(lost);
+    }
 
     public void Tick(float delta, float elapsed)
     {
@@ -562,22 +568,24 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
 
     public MpMessage? BuildMidRunUpdateMessage()
     {
-        if (lastState is not { } s || s.DragonPuddlesVersion == puddlesVersionSent) return null;
-        puddlesVersionSent = s.DragonPuddlesVersion;
-        return new FruP4CrystallizeTimePuddlesUpdateMessage(s.DragonPuddlesVersion,
-            s.DragonPuddles.ToDictionary(p => p.Key, p => new[] { p.Value.X, p.Value.Y, p.Value.Z }));
+        if (lastState is not { } s || s.LiveVersion == liveVersionSent) return null;
+        liveVersionSent = s.LiveVersion;
+        return new FruP4CrystallizeTimeLiveUpdateMessage(s.LiveVersion,
+            s.DragonPuddles.ToDictionary(p => p.Key, p => new[] { p.Value.X, p.Value.Y, p.Value.Z }),
+            s.WyrmclawHolders.ToArray(), s.WyrmfangHolders.ToArray());
     }
 
     public void ApplyMidRunUpdate(object shadowStateObj, MpMessage message)
     {
-        if (shadowStateObj is not FruP4CrystallizeTimeState shadowState || message is not FruP4CrystallizeTimePuddlesUpdateMessage update) return;
-        if (update.Version <= shadowState.DragonPuddlesVersion || update.Puddles.Count > 8) return;
+        if (shadowStateObj is not FruP4CrystallizeTimeState shadowState || message is not FruP4CrystallizeTimeLiveUpdateMessage update) return;
+        if (update.Version <= shadowState.LiveVersion || update.Puddles.Count > 8 || update.Wyrmclaw.Length > 8 || update.Wyrmfang.Length > 8) return;
+        if (!update.Wyrmclaw.Concat(update.Wyrmfang).All(r => Enum.IsDefined(r))) return;
         var puddles = new Dictionary<PartyRole, Vector3>();
         foreach (var (catcher, xyz) in update.Puddles)
         {
             if (!Enum.IsDefined(catcher) || xyz is not { Length: 3 } || !xyz.All(float.IsFinite)) return;
             puddles[catcher] = new Vector3(xyz[0], xyz[1], xyz[2]);
         }
-        shadowState.ReplaceDragonPuddles(update.Version, puddles);
+        shadowState.ReplaceLive(update.Version, puddles, update.Wyrmclaw, update.Wyrmfang);
     }
 }

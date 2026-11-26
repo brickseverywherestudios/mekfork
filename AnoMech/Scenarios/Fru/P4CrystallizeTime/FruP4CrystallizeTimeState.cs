@@ -32,6 +32,8 @@ public sealed class FruP4CrystallizeTimeState
 
     private readonly Dictionary<PartyRole, CrystallizeDebuff> debuffs = new();
     private readonly Dictionary<PartyRole, Vector3> dragonPuddles = new();
+    private readonly HashSet<PartyRole> wyrmclaw = [];
+    private readonly HashSet<PartyRole> wyrmfang = [];
 
     public bool SlowNorthwest { get; }
     public CrystallizeCorner Corner { get; }
@@ -112,25 +114,46 @@ public sealed class FruP4CrystallizeTimeState
 
     // Live: where each head dropped the puddle of the player it caught, as the scenario spawns them.
     public IReadOnlyDictionary<PartyRole, Vector3> DragonPuddles => dragonPuddles;
-    // Bumped on every change to DragonPuddles, so the multiplayer host can tell when to resend them.
-    public int DragonPuddlesVersion { get; private set; }
+    // Live: who still carries Wyrmclaw and Wyrmfang. Kept here rather than read off the statuses,
+    // which a peer's own character doesn't carry in the sim.
+    public IReadOnlyCollection<PartyRole> WyrmclawHolders => wyrmclaw;
+    public IReadOnlyCollection<PartyRole> WyrmfangHolders => wyrmfang;
+    public bool HoldsWyrmclaw(PartyRole role) => wyrmclaw.Contains(role);
+    public bool HoldsWyrmfang(PartyRole role) => wyrmfang.Contains(role);
+
+    // Bumped on every change to the live puddles and holders, so the multiplayer host can tell when
+    // to resend them.
+    public int LiveVersion { get; private set; }
 
     internal void AddDragonPuddle(PartyRole catcher, Vector3 position)
     {
         dragonPuddles[catcher] = position;
-        DragonPuddlesVersion++;
+        LiveVersion++;
     }
 
     internal void RemoveDragonPuddle(PartyRole catcher)
     {
-        if (dragonPuddles.Remove(catcher)) DragonPuddlesVersion++;
+        if (dragonPuddles.Remove(catcher)) LiveVersion++;
     }
 
-    // A peer's copy of the host's puddles.
-    internal void ReplaceDragonPuddles(int version, IReadOnlyDictionary<PartyRole, Vector3> puddles)
+    internal void SetCleanseDebuffHeld(PartyRole role, bool held)
+    {
+        var changed = held
+            ? (IsRed(Debuff(role)) ? wyrmclaw : wyrmfang).Add(role)
+            : wyrmclaw.Remove(role) | wyrmfang.Remove(role);
+        if (changed) LiveVersion++;
+    }
+
+    // A peer's copy of the host's live puddles and holders.
+    internal void ReplaceLive(int version, IReadOnlyDictionary<PartyRole, Vector3> puddles, IEnumerable<PartyRole> clawHolders,
+        IEnumerable<PartyRole> fangHolders)
     {
         dragonPuddles.Clear();
         foreach (var (catcher, position) in puddles) dragonPuddles[catcher] = position;
-        DragonPuddlesVersion = version;
+        wyrmclaw.Clear();
+        wyrmclaw.UnionWith(clawHolders);
+        wyrmfang.Clear();
+        wyrmfang.UnionWith(fangHolders);
+        LiveVersion = version;
     }
 }

@@ -65,7 +65,7 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP4DarklitDragonsongAiReplayStateMessage), "fruP4DarklitDragonsongAiReplayState")]
 [JsonDerivedType(typeof(FruP4DarklitDragonsongOracleLandingUpdateMessage), "fruP4DarklitDragonsongOracleLandingUpdate")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeAiReplayStateMessage), "fruP4CrystallizeTimeAiReplayState")]
-[JsonDerivedType(typeof(FruP4CrystallizeTimePuddlesUpdateMessage), "fruP4CrystallizeTimePuddlesUpdate")]
+[JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -325,9 +325,10 @@ public sealed record FruP4CrystallizeTimeAiReplayStateMessage(
     Dictionary<PartyRole, CrystallizeDebuff> Debuffs, bool SlowNorthwest, CrystallizeCorner Corner, PartyRole[] Quietus,
     PartyRole SpiritTakerTarget) : MpMessage, IScenarioReplayStateMessage;
 
-// Every dragon puddle still down, by catcher, as x,y,z triples: they drop where the heads caught
-// players, which only the host knows.
-public sealed record FruP4CrystallizeTimePuddlesUpdateMessage(int Version, Dictionary<PartyRole, float[]> Puddles) : MpMessage, IScenarioMidRunUpdateMessage;
+// Every dragon puddle still down, by catcher, as x,y,z triples (they drop where the heads caught
+// players), and who still carries Wyrmclaw and Wyrmfang: only the host knows either.
+public sealed record FruP4CrystallizeTimeLiveUpdateMessage(int Version, Dictionary<PartyRole, float[]> Puddles, PartyRole[] Wyrmclaw,
+    PartyRole[] Wyrmfang) : MpMessage, IScenarioMidRunUpdateMessage;
 
 // The whole state surface. GlitchType holds a Predicate (not JSON-friendly); it and
 // OmegaAttack travel as a bool naming the static instance.
