@@ -30,6 +30,7 @@ public sealed class FruP2LightRampantState
 
     // 0-5: the chained loop, alternating north and south group; 6-7: the hammer baiters.
     private readonly PartyRole[] slots;
+    private readonly Dictionary<PartyRole, int> steeped = new();
 
     public IReadOnlyList<PartyRole> InitiallySteeped { get; }
     public int WeightSlot { get; }
@@ -57,6 +58,52 @@ public sealed class FruP2LightRampantState
         if (north.Count == 4) { south.Add(north[0]); north.RemoveAt(0); }
         if (south.Count == 4) { north.Add(south[0]); south.RemoveAt(0); }
         slots = chainRing is null ? [.. north, .. south, .. puddles] : [.. chainRing.Except(puddles), .. puddles];
+    }
+
+    private FruP2LightRampantState(PartyRole[] slots, IReadOnlyList<PartyRole> initiallySteeped, int weightSlot, bool northOrbsFirst, bool pairs,
+        bool supportPairs)
+    {
+        this.slots = slots;
+        InitiallySteeped = initiallySteeped;
+        WeightSlot = weightSlot;
+        NorthOrbsFirst = northOrbsFirst;
+        Pairs = pairs;
+        SupportPairs = supportPairs;
+    }
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run. The
+    // loop travels whole, since it depends on the host's per-seat duties and strat.
+    public static FruP2LightRampantState? FromNetworkReplay(IReadOnlyList<PartyRole> slots, IReadOnlyList<PartyRole> initiallySteeped, int weightSlot,
+        bool northOrbsFirst, bool pairs, bool supportPairs)
+    {
+        if (slots.Count != 8 || !Enum.GetValues<PartyRole>().All(slots.Contains)) return null;
+        if (initiallySteeped.Count != 4 || initiallySteeped.Distinct().Count() != 4 || !initiallySteeped.All(r => Enum.IsDefined(r))) return null;
+        if (weightSlot is < 0 or > 5) return null;
+        return new FruP2LightRampantState(slots.ToArray(), initiallySteeped.ToList(), weightSlot, northOrbsFirst, pairs, supportPairs);
+    }
+
+    public IReadOnlyList<PartyRole> Slots => slots;
+
+    // Live: each player's Lightsteeped stacks. Kept here rather than read off the statuses, which a
+    // peer's own character doesn't carry in the sim.
+    public int SteepedStacks(PartyRole role) => steeped.GetValueOrDefault(role);
+    public IReadOnlyDictionary<PartyRole, int> AllSteepedStacks => steeped;
+    // Bumped on every change to the stacks, so the multiplayer host can tell when to resend them.
+    public int SteepedVersion { get; private set; }
+
+    internal void SetSteepedStacks(PartyRole role, int stacks)
+    {
+        if (steeped.GetValueOrDefault(role) == stacks) return;
+        steeped[role] = stacks;
+        SteepedVersion++;
+    }
+
+    // A peer's copy of the host's stacks.
+    internal void ReplaceSteepedStacks(int version, IReadOnlyDictionary<PartyRole, int> stacks)
+    {
+        steeped.Clear();
+        foreach (var (role, count) in stacks) steeped[role] = count;
+        SteepedVersion = version;
     }
 
     public PartyRole Slot(int index) => slots[index];

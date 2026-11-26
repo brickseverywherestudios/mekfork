@@ -37,6 +37,9 @@ public sealed class FruP3UltimateRelativityState
     public int North { get; }
     public int ClockwiseMask { get; }
     public PartyRole ShellCrusherTarget { get; }
+    // The order the party presses a self-marking macro, for a strat that marks itself. Set by the
+    // host's Ai and sent to peers, so every client marks alike; null when the strat doesn't.
+    public IReadOnlyList<PartyRole>? MarkPressOrder { get; set; }
 
     public FruP3UltimateRelativityState(Rng rng, FruP3UltimateRelativityStateOverrides overrides)
     {
@@ -62,6 +65,30 @@ public sealed class FruP3UltimateRelativityState
             darkness[wave] = overrides.Darkness?[wave] ?? valid[rng.Next(valid.Length)];
         }
         ShellCrusherTarget = overrides.ShellCrusherTarget ?? rng.NextRole();
+    }
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP3UltimateRelativityState? FromNetworkReplay(IReadOnlyDictionary<PartyRole, RelativityDebuff> debuffs, bool dpsIce, int north,
+        int clockwiseMask, IReadOnlyList<PartyRole> darkness, PartyRole shellCrusherTarget, IReadOnlyList<PartyRole>? markPressOrder)
+    {
+        if (debuffs.Count != 8 || !Enum.GetValues<PartyRole>().All(debuffs.ContainsKey)) return null;
+        int Count(RelativityDebuff d) => debuffs.Values.Count(v => v == d);
+        if (Count(RelativityDebuff.ShortDps) != 2 || Count(RelativityDebuff.LongSupport) != 2 || Count(RelativityDebuff.ShortSupport) != 1
+            || Count(RelativityDebuff.MediumDps) != 1 || Count(RelativityDebuff.MediumSupport) != 1 || Count(RelativityDebuff.LongDps) != 1) return null;
+        if (north is < 0 or > 7 || clockwiseMask is < 0 or > 255 || !Enum.IsDefined(shellCrusherTarget)) return null;
+        if (darkness.Count != 3 || darkness.Distinct().Count() != 3 || !darkness.All(r => Enum.IsDefined(r))) return null;
+        if (Enumerable.Range(0, 3).Any(wave => FireWave(debuffs[darkness[wave]]) == wave)) return null;
+        if (markPressOrder is not null && (markPressOrder.Count != 8 || !Enum.GetValues<PartyRole>().All(markPressOrder.Contains))) return null;
+        return new FruP3UltimateRelativityState(Rng.Detached, new FruP3UltimateRelativityStateOverrides
+        {
+            Debuffs = debuffs.ToDictionary(),
+            DpsIce = dpsIce,
+            North = north,
+            ClockwiseMask = clockwiseMask,
+            Darkness = darkness.ToList(),
+            ShellCrusherTarget = shellCrusherTarget,
+        })
+        { MarkPressOrder = markPressOrder?.ToList() };
     }
 
     public RelativityDebuff Debuff(PartyRole role) => debuffs[role];

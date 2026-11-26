@@ -45,6 +45,25 @@ public sealed class FruP5FulgentBladeState
         AkhMornRightPick = overrides.AkhMornRightPick ?? rng.Next(4);
     }
 
+    public bool CardinalDarkInward(int group) => cardinalDarkInward[group];
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP5FulgentBladeState? FromNetworkReplay(int positionIndex, int rotationIndex, bool mirrored, bool[] cardinalDarkInward,
+        int akhMornLeftPick, int akhMornRightPick)
+    {
+        if (positionIndex is < 0 or > 3 || rotationIndex is < 0 or > 3 || cardinalDarkInward.Length != GroupCount) return null;
+        if (akhMornLeftPick is < 0 or > 3 || akhMornRightPick is < 0 or > 3) return null;
+        return new FruP5FulgentBladeState(Rng.Detached, new FruP5FulgentBladeStateOverrides
+        {
+            PositionIndex = positionIndex,
+            RotationIndex = rotationIndex,
+            Mirrored = mirrored,
+            CardinalDarkInward = cardinalDarkInward,
+            AkhMornLeftPick = akhMornLeftPick,
+            AkhMornRightPick = akhMornRightPick,
+        });
+    }
+
     public float Rotation => RotationIndex * MathF.PI / 2f;
 
     public Vector3 Pocket => PositionIndex switch

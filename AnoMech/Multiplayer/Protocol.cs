@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
+using AnoMech.Scenarios.Fru.P3UltimateRelativity;
 using AnoMech.Scenarios.Fru.P4CrystallizeTime;
 using AnoMech.Scenarios.Top;
 using AnoMech.Scenarios.Umad.P1TeleTrouncing;
@@ -66,6 +67,10 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP4DarklitDragonsongOracleLandingUpdateMessage), "fruP4DarklitDragonsongOracleLandingUpdate")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeAiReplayStateMessage), "fruP4CrystallizeTimeAiReplayState")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
+[JsonDerivedType(typeof(FruP5FulgentBladeAiReplayStateMessage), "fruP5FulgentBladeAiReplayState")]
+[JsonDerivedType(typeof(FruP3UltimateRelativityAiReplayStateMessage), "fruP3UltimateRelativityAiReplayState")]
+[JsonDerivedType(typeof(FruP2LightRampantAiReplayStateMessage), "fruP2LightRampantAiReplayState")]
+[JsonDerivedType(typeof(FruP2LightRampantSteepedUpdateMessage), "fruP2LightRampantSteepedUpdate")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -386,3 +391,23 @@ public sealed record PeerAppliedRoleStatusMessage(Guid PeerId, List<PartyRole> R
 // Peer -> host: a step of this player's own action (IUserActions.Acted), which the host shows on
 // the peer's seat for the rest of the party. Target names an actor as a GamePacket does.
 public sealed record ActedMessage(Guid PeerId, PlayerActionStep Step, ActionType ActionType, uint ActionId, uint Target, float CastSeconds) : MpMessage, IPeerMessage;
+
+// CardinalDarkInward has one entry per seam group.
+public sealed record FruP5FulgentBladeAiReplayStateMessage(
+    int PositionIndex, int RotationIndex, bool Mirrored, bool[] CardinalDarkInward, int AkhMornLeftPick, int AkhMornRightPick)
+    : MpMessage, IScenarioReplayStateMessage;
+
+// Darkness holds the Unholy Darkness target of each fire wave; MarkPressOrder is the host Ai's, for
+// a strat that marks itself.
+public sealed record FruP3UltimateRelativityAiReplayStateMessage(
+    Dictionary<PartyRole, RelativityDebuff> Debuffs, bool DpsIce, int North, int ClockwiseMask, PartyRole[] Darkness, PartyRole ShellCrusherTarget,
+    PartyRole[]? MarkPressOrder) : MpMessage, IScenarioReplayStateMessage;
+
+// Slots is the chained loop (0-5) then the hammer baiters (6-7), resolved on the host from its
+// per-seat duties and strat.
+public sealed record FruP2LightRampantAiReplayStateMessage(
+    PartyRole[] Slots, PartyRole[] InitiallySteeped, int WeightSlot, bool NorthOrbsFirst, bool Pairs, bool SupportPairs)
+    : MpMessage, IScenarioReplayStateMessage;
+
+// Everyone's Lightsteeped stacks: a peer's own character doesn't carry them in the sim.
+public sealed record FruP2LightRampantSteepedUpdateMessage(int Version, Dictionary<PartyRole, int> Stacks) : MpMessage, IScenarioMidRunUpdateMessage;
