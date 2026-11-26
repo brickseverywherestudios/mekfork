@@ -50,7 +50,7 @@ public class ConfigWindow : Window, IDisposable
         }
 
         var autoDisable = configuration.AutoDisableAutoRestart;
-        if (ImGui.Checkbox("Auto-disable auto-restart", ref autoDisable))
+        if (ImGui.Checkbox("Disable auto-restart on failure", ref autoDisable))
         {
             configuration.AutoDisableAutoRestart = autoDisable;
             configuration.Save();

@@ -908,7 +908,7 @@ public unsafe class MainWindow : Window, IDisposable
                 ? MpDisabledReason
                 : practice.AutoDisableAutoRestart
                     ? "Restart the same scenario immediately after a successful run. A failed run turns this back off."
-                    : "Restart the same scenario after every run, failed or not (Settings: Auto-disable auto-restart is off).");
+                    : "Restart the same scenario after every run, failed or not (Settings: Disable auto-restart on failure is off).");
         ImGui.SameLine();
         ImGui.TextDisabled($"Streak: {practice.Streak}");
     }
