@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
+using AnoMech.Scenarios.Fru.P3UltimateRelativity;
 using AnoMech.Scenarios.Fru.P4CrystallizeTime;
 using AnoMech.Scenarios.Top;
 using AnoMech.Scenarios.Umad.P1TeleTrouncing;
@@ -67,6 +68,7 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP4CrystallizeTimeAiReplayStateMessage), "fruP4CrystallizeTimeAiReplayState")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
 [JsonDerivedType(typeof(FruP5FulgentBladeAiReplayStateMessage), "fruP5FulgentBladeAiReplayState")]
+[JsonDerivedType(typeof(FruP3UltimateRelativityAiReplayStateMessage), "fruP3UltimateRelativityAiReplayState")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -391,4 +393,9 @@ public sealed record ActedMessage(Guid PeerId, PlayerActionStep Step, ActionType
 // CardinalDarkInward has one entry per seam group.
 public sealed record FruP5FulgentBladeAiReplayStateMessage(
     int PositionIndex, int RotationIndex, bool Mirrored, bool[] CardinalDarkInward, int AkhMornLeftPick, int AkhMornRightPick)
+    : MpMessage, IScenarioReplayStateMessage;
+
+// Darkness holds the Unholy Darkness target of each fire wave.
+public sealed record FruP3UltimateRelativityAiReplayStateMessage(
+    Dictionary<PartyRole, RelativityDebuff> Debuffs, bool DpsIce, int North, int ClockwiseMask, PartyRole[] Darkness, PartyRole ShellCrusherTarget)
     : MpMessage, IScenarioReplayStateMessage;

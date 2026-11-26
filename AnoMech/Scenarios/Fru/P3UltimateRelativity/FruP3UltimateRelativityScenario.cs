@@ -7,16 +7,18 @@ using AnoMech.Core.Game;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P3UltimateRelativity.FruP3UltimateRelativityState;
 using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P3UltimateRelativity;
 
-public sealed class FruP3UltimateRelativityScenario : IScenario
+public sealed class FruP3UltimateRelativityScenario : IMultiplayerReplayable
 {
     public string Name => "Ultimate Relativity";
     public IPhase Phase => FruZone.P3;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP3UltimateRelativityAi(), new FruP3UltimateRelativityJpAi()];
 
@@ -26,6 +28,8 @@ public sealed class FruP3UltimateRelativityScenario : IScenario
 
     private SimWorld world = null!;
     private FruP3UltimateRelativityState state = null!;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP3UltimateRelativityState? lastState;
     private SimEnemy? oracle;
     private readonly SimEnemy?[] hourglasses = new SimEnemy?[8];
     private readonly Vector3[] laserDirections = new Vector3[8];
@@ -36,6 +40,7 @@ public sealed class FruP3UltimateRelativityScenario : IScenario
     {
         world = worldParam;
         state = new FruP3UltimateRelativityState(world.Rng, settingsWindow.Overrides);
+        lastState = state;
         speedTethers.Clear();
         returns.Clear();
         if (selectedAi is { } idx && idx < AiStrats.Count)
@@ -241,5 +246,20 @@ public sealed class FruP3UltimateRelativityScenario : IScenario
     private void ShellCrusher()
     {
         if (world.Party.Get(state.ShellCrusherTarget) is { } target && target.IsAlive()) oracle?.Cast(Actions.ShellCrusher, target);
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP3UltimateRelativityAiReplayStateMessage(Enum.GetValues<PartyRole>().ToDictionary(r => r, s.Debuff), s.DpsIce, s.North,
+                s.ClockwiseMask, Enumerable.Range(0, 3).Select(s.Darkness).ToArray(), s.ShellCrusherTarget)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
+    {
+        if (message is not FruP3UltimateRelativityAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP3UltimateRelativityState.FromNetworkReplay(msg.Debuffs, msg.DpsIce, msg.North, msg.ClockwiseMask, msg.Darkness,
+                msg.ShellCrusherTarget) is not { } shadowState) return null;
+        ((IScenarioAi<FruP3UltimateRelativityState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
+        return shadowState;
     }
 }
