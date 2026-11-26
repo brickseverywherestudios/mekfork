@@ -30,7 +30,7 @@ public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
 
     private static readonly Vector3 FragmentPosition = new(0, 0, -16);
     // The bosses stand ready this long before the timeline starts, so the party can engage first.
-    private const float PullLeadIn = 3f;
+    public const float PullLeadIn = 3f;
     // Curse chains stretched shorter than this snap. UNVERIFIED: retail's limit lies between 9.4 and 9.8.
     private const float CurseMinLength = 9.5f;
     // The Oracle's jumps land this short of their target, and don't move her when it's closer.
