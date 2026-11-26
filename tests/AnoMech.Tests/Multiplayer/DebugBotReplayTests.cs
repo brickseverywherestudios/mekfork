@@ -52,6 +52,9 @@ public partial class DebugBotReplayTests
                     wrong.Add($"{peer.Seat}: the host's Ai sent it to {planned[i]}, its peer went to {walked[i]}");
         }
         foreach (var line in wrong.Take(20)) TestContext.Out.WriteLine(line);
+        foreach (var client in run.Peers.Where(p => run.Deaths.Any(d => d.Role == p.Seat)))
+            foreach (var line in client.Log.Lines.Where(l => l.Contains("[CTDBG]") || l.Contains("Kill") || l.Contains("ReplayState") || l.Contains("debug-bot")).TakeLast(80))
+                TestContext.Out.WriteLine($"TMPDBG {client.Seat}: {line}");
         Assert.That(wrong, Is.Empty, "seats a peer's Ai played differently from the host's");
         Assert.That(run.Deaths, Is.Empty, () => string.Join(", ", run.Deaths.Select(d => $"{d.Role}: {d.Cause} at {d.Time:F1}s")));
     }

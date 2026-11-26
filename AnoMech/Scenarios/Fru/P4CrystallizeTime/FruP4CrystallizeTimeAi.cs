@@ -123,6 +123,7 @@ public sealed class FruP4CrystallizeTimeAi : IScenarioAi<FruP4CrystallizeTimeSta
         {
             var role = RoleOf(assignment);
             puddleTargets.Remove(role);
+            AnoMech.Core.DiagnosticLog.Info($"[CTDBG] t={Elapsed:F2} route {role} {assignment} puddle={destination.Puddle} bot={world.Party.Get(role) is {} bb && world.Party.IsBotDriven(bb)}");
             if (world.Party.Get(role) is not { } bot || !bot.IsAlive() || !world.Party.IsBotDriven(bot)) continue;
             if (destination.Puddle is { } source)
             {
@@ -151,6 +152,7 @@ public sealed class FruP4CrystallizeTimeAi : IScenarioAi<FruP4CrystallizeTimeSta
     {
         var walk = Vector2.Distance(new Vector2(bot.Position.X, bot.Position.Z), new Vector2(destination.X, destination.Z)) / RunSpeed;
         var leaveAt = MathF.Max(leaveNoSoonerThan, arriveBy is { } deadline ? deadline - ArrivalMargin - walk : 0f);
+        AnoMech.Core.DiagnosticLog.Info($"[CTDBG] t={Elapsed:F2} {role} at ({bot.Position.X:F1},{bot.Position.Z:F1}) plan -> ({destination.X:F1},{destination.Z:F1}) leave {leaveAt:F2}");
         var order = CancelPendingMove(role);
         if (leaveAt <= Elapsed)
         {
@@ -165,6 +167,7 @@ public sealed class FruP4CrystallizeTimeAi : IScenarioAi<FruP4CrystallizeTimeSta
 
     private void MoveNow(SimCharacter bot, PartyRole role, Vector3 destination)
     {
+        AnoMech.Core.DiagnosticLog.Info($"[CTDBG] t={Elapsed:F2} {role} MoveNow -> ({destination.X:F1},{destination.Z:F1})");
         CancelPendingMove(role);
         bot.MoveTo(destination, RunSpeed);
     }
