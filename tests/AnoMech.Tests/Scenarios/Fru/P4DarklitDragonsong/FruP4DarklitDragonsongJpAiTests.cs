@@ -11,8 +11,8 @@ namespace AnoMech.Tests;
 // Waters are north (H1 chained, H2 free), so H2 swaps with their partner D3 before the towers.
 public class FruP4DarklitDragonsongJpAiTests
 {
-    private const float Seated = FruP4DarklitDragonsongScenario.PullLeadIn + 27.5f;
-    private const float Swapped = FruP4DarklitDragonsongScenario.PullLeadIn + 32.1f;
+    private const float Seated = 27.5f;
+    private const float Swapped = 32.1f;
 
     private static readonly int Mana = new FruP4DarklitDragonsongScenario().AiStrats
         .Select((ai, index) => (ai, index))

@@ -35,22 +35,6 @@ public sealed class EventScheduler
             elapsed = now;
         }
     }
-    // Add offsets inside `schedule` count from `seconds` after where they would otherwise: a whole
-    // timeline written from t=0 shifted later without touching its times.
-    public void Delayed(float seconds, Action schedule)
-    {
-        var now = elapsed;
-        elapsed += MathF.Max(0f, seconds);
-        try
-        {
-            schedule();
-        }
-        finally
-        {
-            elapsed = now;
-        }
-    }
-
     // No more scheduled work. A scenario's whole timeline lives in this queue, so this
     // doubles as a generic "reached its declared end" signal for whoever's watching (Game
     // uses it to infer a clean run for the mechanic-streak counter) without needing scenarios
