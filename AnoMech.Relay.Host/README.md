@@ -18,6 +18,7 @@ service](#running-it-as-a-public-service) and [Security notes](#security-notes).
 - [Quick local test](#quick-local-test)
 - [Option A — cloud VPS](#option-a--cloud-vps-recommended)
 - [Option B — your own PC](#option-b--your-own-pc)
+- [Option C — Docker Compose with TLS](#option-c--docker-compose-with-tls)
 - [Adding TLS (`wss://`)](#adding-tls-wss)
 - [Verifying it's reachable](#verifying-its-reachable)
 - [What to share with your group](#what-to-share-with-your-group)
@@ -144,6 +145,34 @@ stay on for the session.
 4. **Run it**: `.\publish\AnoMech.Relay.Host.exe --port 7890` (`./publish/AnoMech.Relay.Host
    --port 7890` on Linux). Closing the console kills it — see
    [Troubleshooting](#troubleshooting) if it won't start.
+
+---
+
+## Option C — Docker Compose with TLS
+
+[`deploy/`](deploy/) runs the relay, built from this checkout, behind Caddy, which gets a Let's
+Encrypt certificate on its own. Only Caddy publishes ports (80, 443); the relay is reachable only
+from Caddy, which it trusts for `X-Forwarded-*`, and refuses anything not TLS-terminated.
+
+Needs Docker with the Compose plugin, a domain whose DNS points at the box, and ports 80/443 free
+and open in its firewall.
+
+```bash
+git clone <this repo> && cd <repo>/AnoMech.Relay.Host/deploy
+cp .env.example .env        # set RELAY_DOMAIN, optionally the tokens
+docker compose up -d --build
+docker compose logs -f relay
+```
+
+Point the plugin at `wss://<RELAY_DOMAIN>`. To update, `git pull` then
+`docker compose up -d --build` again. Rebuild whenever the plugin's wire protocol changes.
+
+- Admin dashboard (needs `ANOMECH_RELAY_ADMIN_TOKEN`):
+  `docker compose exec relay dotnet AnoMech.Relay.Host.dll --admin`
+- One session's logs:
+  `docker compose exec relay dotnet AnoMech.Relay.Host.dll --session-log ABCD23 --log-dir /app/logs`
+- If `172.30.77.0/24` collides with an existing network, change the subnet, both fixed addresses and
+  `--trusted-proxy` together in `compose.yaml`.
 
 ---
 
