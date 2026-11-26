@@ -16,6 +16,7 @@ public class Configuration : IPluginConfiguration
     public bool EnableEventLogging { get; set; } = false;
     public bool SuppressBgm { get; set; } = true;
     public bool EnableMechanicResultMarks { get; set; } = false;
+    public bool ShowFailureBanner { get; set; } = false;
     public bool AutoCollapseWhileRunning { get; set; } = false;
     public bool AutoDisableAutoRestart { get; set; } = true;
     public string LastSelectedScenario { get; set; } = "";
