@@ -6,16 +6,18 @@ using AnoMech.Core.Game;
 using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P3Apocalypse.FruP3ApocalypseState;
 using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P3Apocalypse;
 
-public sealed class FruP3ApocalypseScenario : IScenario
+public sealed class FruP3ApocalypseScenario : IMultiplayerReplayable
 {
     public string Name => "Apocalypse";
     public IPhase Phase => FruZone.P3;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP3ApocalypseAi(), new FruP3ApocalypseJpAi()];
 
@@ -28,11 +30,14 @@ public sealed class FruP3ApocalypseScenario : IScenario
 
     private SimWorld world = null!;
     private FruP3ApocalypseState state = null!;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP3ApocalypseState? lastState;
     private SimEnemy? oracle;
 
     private readonly List<SimEventObject?> centerLights = [];
     private readonly SimEventObject?[] spokeLights = new SimEventObject?[8];
-    private Vector3 danceLanding;
+    // Edge-triggers BuildMidRunUpdateMessage.
+    private bool danceLandingSent;
 
     private const uint LightBeatState = 4;
     // Bit n plays the light SGB's timeline n: shine_front_a1, front_a2, off, front_a3, right_a1,
@@ -48,6 +53,8 @@ public sealed class FruP3ApocalypseScenario : IScenario
     {
         world = worldParam;
         state = new FruP3ApocalypseState(world.Rng, settingsWindow.Overrides);
+        lastState = state;
+        danceLandingSent = false;
         if (selectedAi is { } idx && idx < AiStrats.Count)
             ((IScenarioAi<FruP3ApocalypseState>)AiStrats[idx]).Run(state, world);
 
@@ -88,7 +95,7 @@ public sealed class FruP3ApocalypseScenario : IScenario
         world.Events.Add(38.5f, () => oracle?.Cast(ActionId.DarkestDanceCast, animationLock: 0.2f));
         world.Events.Add(WaterAt(2), () => DarkWater(2));
         world.Events.Add(44f, DarkestDance);
-        world.Events.Add(45.1f, () => oracle?.SetPosition(danceLanding));
+        world.Events.Add(45.1f, () => { if (state.DanceLanding is { } landing) oracle?.SetPosition(landing); });
         world.Events.Add(45.25f, () => world.Map.AddEffect(MapEffect.OracleFloorAfterApocalypse, MapEffect.OracleFloor));
         world.Events.Add(45.5f, RemoveLights);
         world.Events.Add(WaterMarkerAt(3), () => MarkWaterHolders(LockonId.WaterCountdown, 3));
@@ -211,8 +218,35 @@ public sealed class FruP3ApocalypseScenario : IScenario
         if (target is null) return;
         boss.Cast(Actions.DarkestDance, target);
         var offset = target.Position - boss.Position;
-        danceLanding = offset.Length() > DanceLandingShort
+        state.DanceLanding = offset.Length() > DanceLandingShort
             ? boss.Position + Vector3.Normalize(offset) * (offset.Length() - DanceLandingShort)
             : boss.Position;
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP3ApocalypseAiReplayStateMessage(s.Rotation, s.Clockwise, s.WaterDurations.ToArray(), s.SpiritTakerTarget)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
+    {
+        if (message is not FruP3ApocalypseAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP3ApocalypseState.FromNetworkReplay(msg.Rotation, msg.Clockwise, msg.WaterDurations, msg.SpiritTakerTarget) is not { } shadowState) return null;
+        ((IScenarioAi<FruP3ApocalypseState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
+        return shadowState;
+    }
+
+    public MpMessage? BuildMidRunUpdateMessage()
+    {
+        if (danceLandingSent || lastState?.DanceLanding is not { } landing) return null;
+        danceLandingSent = true;
+        return new FruP3ApocalypseDanceLandingUpdateMessage(landing.X, landing.Y, landing.Z);
+    }
+
+    public void ApplyMidRunUpdate(object shadowStateObj, MpMessage message)
+    {
+        if (shadowStateObj is not FruP3ApocalypseState shadowState || message is not FruP3ApocalypseDanceLandingUpdateMessage update) return;
+        if (!float.IsFinite(update.X) || !float.IsFinite(update.Y) || !float.IsFinite(update.Z)) return;
+        shadowState.DanceLanding = new Vector3(update.X, update.Y, update.Z);
     }
 }

@@ -27,6 +27,8 @@ public sealed class FruP3ApocalypseState
     // Indexed by PartyRole: 0 = no Dark Water, else its duration slot 1-3.
     public IReadOnlyList<int> WaterDurations { get; }
     public PartyRole SpiritTakerTarget { get; }
+    // Where Darkest Dance lands, which depends on where the party stands; null until it is cast.
+    public Vector3? DanceLanding { get; set; }
 
     public FruP3ApocalypseState(Rng rng, FruP3ApocalypseStateOverrides overrides)
     {
@@ -34,6 +36,20 @@ public sealed class FruP3ApocalypseState
         Clockwise = overrides.Clockwise ?? rng.NextBool();
         WaterDurations = overrides.WaterDurations ?? rng.Shuffle(0, 0, 1, 1, 2, 2, 3, 3).ToList();
         SpiritTakerTarget = overrides.SpiritTakerTarget ?? rng.NextRole();
+    }
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP3ApocalypseState? FromNetworkReplay(int rotation, bool clockwise, IReadOnlyList<int> waterDurations, PartyRole spiritTakerTarget)
+    {
+        if (rotation is < 0 or > 3 || !Enum.IsDefined(spiritTakerTarget)) return null;
+        if (waterDurations.Count != 8 || Enumerable.Range(0, 4).Any(d => waterDurations.Count(w => w == d) != 2)) return null;
+        return new FruP3ApocalypseState(Rng.Detached, new FruP3ApocalypseStateOverrides
+        {
+            Rotation = rotation,
+            Clockwise = clockwise,
+            WaterDurations = waterDurations.ToList(),
+            SpiritTakerTarget = spiritTakerTarget,
+        });
     }
 
     public int WaterDuration(PartyRole role) => WaterDurations[(int)role];

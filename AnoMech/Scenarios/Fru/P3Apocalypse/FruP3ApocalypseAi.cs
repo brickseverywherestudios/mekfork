@@ -108,7 +108,7 @@ public sealed class FruP3ApocalypseAi : IScenarioAi<FruP3ApocalypseState>
     }
 
     private Vector3 OraclePosition()
-        => world.Children.OfType<SimEnemy>().FirstOrDefault(e => e.BNpcBaseId == BNpcBaseId.OracleP3)?.Position ?? Vector3.Zero;
+        => state.DanceLanding ?? Vector3.Zero;
 
     private Vector3? KnockbackStack(PartyRole role)
     {
