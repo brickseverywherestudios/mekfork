@@ -27,6 +27,8 @@ public sealed class FruP3ApocalypseState
     // Indexed by PartyRole: 0 = no Dark Water, else its duration slot 1-3.
     public IReadOnlyList<int> WaterDurations { get; }
     public PartyRole SpiritTakerTarget { get; }
+    // Where Darkest Dance lands, which depends on where the party stands; null until it is cast.
+    public Vector3? DanceLanding { get; set; }
 
     public FruP3ApocalypseState(Rng rng, FruP3ApocalypseStateOverrides overrides)
     {
