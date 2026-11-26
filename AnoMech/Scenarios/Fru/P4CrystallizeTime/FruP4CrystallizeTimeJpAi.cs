@@ -37,13 +37,12 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
     private readonly HashSet<PartyRole> holdingClaw = [];
     private readonly HashSet<PartyRole> holdingFang = [];
     private readonly Dictionary<PartyRole, int> moveOrders = new();
-    private float elapsed;
+    private float Elapsed => world.Events.Elapsed;
 
     public void Run(FruP4CrystallizeTimeState stateParam, SimWorld worldParam)
     {
         state = stateParam;
         world = worldParam;
-        elapsed = 0f;
         puddleTargets.Clear();
         knockedByAero.Clear();
         holdingClaw.Clear();
@@ -82,7 +81,6 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
 
     public void Tick(FruP4CrystallizeTimeState stateParam, SimWorld worldParam, float delta)
     {
-        elapsed += delta;
         foreach (var bot in Bots())
         {
             var role = ((ISimPartyMember)bot).Role;
@@ -148,12 +146,12 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
         var walk = Vector2.Distance(new Vector2(bot.Position.X, bot.Position.Z), new Vector2(destination.X, destination.Z)) / RunSpeed;
         var leaveAt = MathF.Max(leaveNoSoonerThan, arriveBy is { } deadline ? deadline - ArrivalMargin - walk : 0f);
         var order = CancelPendingMove(role);
-        if (leaveAt <= elapsed)
+        if (leaveAt <= Elapsed)
         {
             bot.MoveTo(destination, RunSpeed);
             return;
         }
-        world.Events.Add(leaveAt - elapsed, () =>
+        world.Events.Add(leaveAt - Elapsed, () =>
         {
             if (moveOrders[role] == order && bot.IsAlive()) bot.MoveTo(destination, RunSpeed);
         });
@@ -177,7 +175,7 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
 
     private void ReactToClawCaught(SimCharacter bot, PartyRole role)
     {
-        var holds = bot.HasStatus(StatusId.Wyrmclaw);
+        var holds = state.HoldsWyrmclaw(role);
         if (holds) { holdingClaw.Add(role); return; }
         if (!holdingClaw.Remove(role) || state.Debuff(role) != CrystallizeDebuff.RedAero) return;
         var escape = state.East ? POST_EARLY_SOAK_E : POST_EARLY_SOAK_W;
@@ -186,9 +184,9 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
 
     private void ReactToFangCleansed(SimCharacter bot, PartyRole role)
     {
-        var holds = bot.HasStatus(StatusId.Wyrmfang);
+        var holds = state.HoldsWyrmfang(role);
         if (holds) { holdingFang.Add(role); return; }
-        if (!holdingFang.Remove(role) || elapsed >= StopCleansingAt) return;
+        if (!holdingFang.Remove(role) || Elapsed >= StopCleansingAt) return;
         puddleTargets.Remove(role);
         if (AfterCleanse.TryGetValue(assignments[role], out var next)) MoveNow(bot, role, next.Position);
     }

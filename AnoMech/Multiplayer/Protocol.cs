@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
+using AnoMech.Scenarios.Fru.P4CrystallizeTime;
 using AnoMech.Scenarios.Top;
 using AnoMech.Scenarios.Umad.P1TeleTrouncing;
 using AnoMech.Scenarios.Umad.P2Forsaken;
@@ -63,6 +64,8 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP3ApocalypseDanceLandingUpdateMessage), "fruP3ApocalypseDanceLandingUpdate")]
 [JsonDerivedType(typeof(FruP4DarklitDragonsongAiReplayStateMessage), "fruP4DarklitDragonsongAiReplayState")]
 [JsonDerivedType(typeof(FruP4DarklitDragonsongOracleLandingUpdateMessage), "fruP4DarklitDragonsongOracleLandingUpdate")]
+[JsonDerivedType(typeof(FruP4CrystallizeTimeAiReplayStateMessage), "fruP4CrystallizeTimeAiReplayState")]
+[JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -317,6 +320,15 @@ public sealed record FruP4DarklitDragonsongAiReplayStateMessage(
 
 // Where the Oracle's latest jump lands: Spirit Taker and Somber Dance chase players, which only the host knows.
 public sealed record FruP4DarklitDragonsongOracleLandingUpdateMessage(int Jumps, float X, float Y, float Z) : MpMessage, IScenarioMidRunUpdateMessage;
+
+public sealed record FruP4CrystallizeTimeAiReplayStateMessage(
+    Dictionary<PartyRole, CrystallizeDebuff> Debuffs, bool SlowNorthwest, CrystallizeCorner Corner, PartyRole[] Quietus,
+    PartyRole SpiritTakerTarget) : MpMessage, IScenarioReplayStateMessage;
+
+// Every dragon puddle still down, by catcher, as x,y,z triples (they drop where the heads caught
+// players), and who still carries Wyrmclaw and Wyrmfang: only the host knows either.
+public sealed record FruP4CrystallizeTimeLiveUpdateMessage(int Version, Dictionary<PartyRole, float[]> Puddles, PartyRole[] Wyrmclaw,
+    PartyRole[] Wyrmfang) : MpMessage, IScenarioMidRunUpdateMessage;
 
 // The whole state surface. GlitchType holds a Predicate (not JSON-friendly); it and
 // OmegaAttack travel as a bool naming the static instance.

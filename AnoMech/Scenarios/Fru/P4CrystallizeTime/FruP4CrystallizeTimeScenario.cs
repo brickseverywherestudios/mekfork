@@ -8,6 +8,7 @@ using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P4CrystallizeTime.FruP4CrystallizeTimeState;
@@ -15,10 +16,11 @@ using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P4CrystallizeTime;
 
-public sealed class FruP4CrystallizeTimeScenario : IScenario
+public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
 {
     public string Name => "Crystallize Time";
     public IPhase Phase => FruZone.P4;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => strats;
     private readonly IReadOnlyList<IScenarioAi> strats = [new FruP4CrystallizeTimeAi(), new FruP4CrystallizeTimeJpAi()];
@@ -48,6 +50,13 @@ public sealed class FruP4CrystallizeTimeScenario : IScenario
     private SimWorld world = null!;
     private FruP4CrystallizeTimeState state = null!;
     private IScenarioAi<FruP4CrystallizeTimeState>? ai;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP4CrystallizeTimeState? lastState;
+    // Edge-triggers BuildMidRunUpdateMessage.
+    private int liveVersionSent;
+    // A peer's strat and world, ticked by TickReplay since a peer never runs Tick.
+    private IScenarioAi<FruP4CrystallizeTimeState>? replayAi;
+    private SimWorld? replayWorld;
     private SimEnemy? usurper, oracle, fragment;
     private readonly SimEnemy?[] hourglasses = new SimEnemy?[6];
     private readonly SimEnemy?[] dragons = new SimEnemy?[2];
@@ -62,6 +71,8 @@ public sealed class FruP4CrystallizeTimeScenario : IScenario
     {
         world = worldParam;
         state = new FruP4CrystallizeTimeState(world.Rng, world.Party.PlayerRole, settingsWindow.Overrides);
+        lastState = state;
+        liveVersionSent = 0;
         Array.Clear(dragons);
         Array.Clear(dragonCatches);
         Array.Clear(lastCatcher);
@@ -243,6 +254,7 @@ public sealed class FruP4CrystallizeTimeScenario : IScenario
             var debuff = state.Debuff(role);
             var cleanseBy = debuff == CrystallizeDebuff.RedIce ? RedIceCleanseBy : CleanseBy;
             member.AddStatus(IsRed(debuff) ? StatusId.Wyrmclaw : StatusId.Wyrmfang, cleanseBy - DebuffsAt);
+            state.SetCleanseDebuffHeld(role, held: true);
             var (spell, at) = debuff switch
             {
                 CrystallizeDebuff.RedAero => (StatusId.DarkAeroWaiting, 25.9f),
@@ -423,7 +435,12 @@ public sealed class FruP4CrystallizeTimeScenario : IScenario
     }
 
     public void OnActionResolved(ActionResolved resolved) => BreakFragmentOnAvoidableHit(resolved);
-    public void OnStatusLost(StatusLost lost) => KillUncleansed(lost);
+    public void OnStatusLost(StatusLost lost)
+    {
+        if (lost is { StatusId: StatusId.Wyrmclaw or StatusId.Wyrmfang, Holder: ISimPartyMember holder })
+            state.SetCleanseDebuffHeld(holder.Role, held: false);
+        KillUncleansed(lost);
+    }
 
     public void Tick(float delta, float elapsed)
     {
@@ -525,5 +542,50 @@ public sealed class FruP4CrystallizeTimeScenario : IScenario
         visual?.Despawn();
         puddles.Remove(catcher);
         state.RemoveDragonPuddle(catcher);
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP4CrystallizeTimeAiReplayStateMessage(Enum.GetValues<PartyRole>().ToDictionary(r => r, s.Debuff), s.SlowNorthwest,
+                s.Corner, s.Quietus.ToArray(), s.SpiritTakerTarget)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld world)
+    {
+        if (message is not FruP4CrystallizeTimeAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP4CrystallizeTimeState.FromNetworkReplay(msg.Debuffs, msg.SlowNorthwest, msg.Corner, msg.Quietus, msg.SpiritTakerTarget)
+            is not { } shadowState) return null;
+        replayAi = (IScenarioAi<FruP4CrystallizeTimeState>)AiStrats[aiIndex];
+        replayWorld = world;
+        replayAi.Run(shadowState, world);
+        return shadowState;
+    }
+
+    public void TickReplay(object shadowStateObj, float deltaSeconds)
+    {
+        if (shadowStateObj is FruP4CrystallizeTimeState shadowState && replayWorld is { } world) replayAi?.Tick(shadowState, world, deltaSeconds);
+    }
+
+    public MpMessage? BuildMidRunUpdateMessage()
+    {
+        if (lastState is not { } s || s.LiveVersion == liveVersionSent) return null;
+        liveVersionSent = s.LiveVersion;
+        return new FruP4CrystallizeTimeLiveUpdateMessage(s.LiveVersion,
+            s.DragonPuddles.ToDictionary(p => p.Key, p => new[] { p.Value.X, p.Value.Y, p.Value.Z }),
+            s.WyrmclawHolders.ToArray(), s.WyrmfangHolders.ToArray());
+    }
+
+    public void ApplyMidRunUpdate(object shadowStateObj, MpMessage message)
+    {
+        if (shadowStateObj is not FruP4CrystallizeTimeState shadowState || message is not FruP4CrystallizeTimeLiveUpdateMessage update) return;
+        if (update.Version <= shadowState.LiveVersion || update.Puddles.Count > 8 || update.Wyrmclaw.Length > 8 || update.Wyrmfang.Length > 8) return;
+        if (!update.Wyrmclaw.Concat(update.Wyrmfang).All(r => Enum.IsDefined(r))) return;
+        var puddles = new Dictionary<PartyRole, Vector3>();
+        foreach (var (catcher, xyz) in update.Puddles)
+        {
+            if (!Enum.IsDefined(catcher) || xyz is not { Length: 3 } || !xyz.All(float.IsFinite)) return;
+            puddles[catcher] = new Vector3(xyz[0], xyz[1], xyz[2]);
+        }
+        shadowState.ReplaceLive(update.Version, puddles, update.Wyrmclaw, update.Wyrmfang);
     }
 }

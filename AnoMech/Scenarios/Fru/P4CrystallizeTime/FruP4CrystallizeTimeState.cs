@@ -32,6 +32,8 @@ public sealed class FruP4CrystallizeTimeState
 
     private readonly Dictionary<PartyRole, CrystallizeDebuff> debuffs = new();
     private readonly Dictionary<PartyRole, Vector3> dragonPuddles = new();
+    private readonly HashSet<PartyRole> wyrmclaw = [];
+    private readonly HashSet<PartyRole> wyrmfang = [];
 
     public bool SlowNorthwest { get; }
     public CrystallizeCorner Corner { get; }
@@ -55,6 +57,24 @@ public sealed class FruP4CrystallizeTimeState
         if (overrides.Corner is { } corner) Corner = corner;
         Quietus = overrides.Quietus ?? rng.Shuffle(Enum.GetValues<PartyRole>()).Take(3).ToList();
         SpiritTakerTarget = overrides.SpiritTakerTarget ?? rng.NextRole();
+    }
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP4CrystallizeTimeState? FromNetworkReplay(IReadOnlyDictionary<PartyRole, CrystallizeDebuff> debuffs, bool slowNorthwest,
+        CrystallizeCorner corner, IReadOnlyList<PartyRole> quietus, PartyRole spiritTakerTarget)
+    {
+        if (debuffs.Count != 8 || !Enum.GetValues<PartyRole>().All(debuffs.ContainsKey)) return null;
+        if (Enum.GetValues<CrystallizeDebuff>().Any(d => debuffs.Values.Count(v => v == d) != (IsRed(d) ? 2 : 1))) return null;
+        if (!Enum.IsDefined(corner) || !Enum.IsDefined(spiritTakerTarget)) return null;
+        if (quietus.Count != 3 || quietus.Distinct().Count() != 3 || !quietus.All(r => Enum.IsDefined(r))) return null;
+        return new FruP4CrystallizeTimeState(Rng.Detached, PartyRole.MainTank, new FruP4CrystallizeTimeStateOverrides
+        {
+            Debuffs = debuffs.ToDictionary(),
+            SlowNorthwest = slowNorthwest,
+            Corner = corner,
+            Quietus = quietus.ToList(),
+            SpiritTakerTarget = spiritTakerTarget,
+        });
     }
 
     public CrystallizeDebuff Debuff(PartyRole role) => debuffs[role];
@@ -94,6 +114,46 @@ public sealed class FruP4CrystallizeTimeState
 
     // Live: where each head dropped the puddle of the player it caught, as the scenario spawns them.
     public IReadOnlyDictionary<PartyRole, Vector3> DragonPuddles => dragonPuddles;
-    internal void AddDragonPuddle(PartyRole catcher, Vector3 position) => dragonPuddles[catcher] = position;
-    internal void RemoveDragonPuddle(PartyRole catcher) => dragonPuddles.Remove(catcher);
+    // Live: who still carries Wyrmclaw and Wyrmfang. Kept here rather than read off the statuses,
+    // which a peer's own character doesn't carry in the sim.
+    public IReadOnlyCollection<PartyRole> WyrmclawHolders => wyrmclaw;
+    public IReadOnlyCollection<PartyRole> WyrmfangHolders => wyrmfang;
+    public bool HoldsWyrmclaw(PartyRole role) => wyrmclaw.Contains(role);
+    public bool HoldsWyrmfang(PartyRole role) => wyrmfang.Contains(role);
+
+    // Bumped on every change to the live puddles and holders, so the multiplayer host can tell when
+    // to resend them.
+    public int LiveVersion { get; private set; }
+
+    internal void AddDragonPuddle(PartyRole catcher, Vector3 position)
+    {
+        dragonPuddles[catcher] = position;
+        LiveVersion++;
+    }
+
+    internal void RemoveDragonPuddle(PartyRole catcher)
+    {
+        if (dragonPuddles.Remove(catcher)) LiveVersion++;
+    }
+
+    internal void SetCleanseDebuffHeld(PartyRole role, bool held)
+    {
+        var changed = held
+            ? (IsRed(Debuff(role)) ? wyrmclaw : wyrmfang).Add(role)
+            : wyrmclaw.Remove(role) | wyrmfang.Remove(role);
+        if (changed) LiveVersion++;
+    }
+
+    // A peer's copy of the host's live puddles and holders.
+    internal void ReplaceLive(int version, IReadOnlyDictionary<PartyRole, Vector3> puddles, IEnumerable<PartyRole> clawHolders,
+        IEnumerable<PartyRole> fangHolders)
+    {
+        dragonPuddles.Clear();
+        foreach (var (catcher, position) in puddles) dragonPuddles[catcher] = position;
+        wyrmclaw.Clear();
+        wyrmclaw.UnionWith(clawHolders);
+        wyrmfang.Clear();
+        wyrmfang.UnionWith(fangHolders);
+        LiveVersion = version;
+    }
 }
