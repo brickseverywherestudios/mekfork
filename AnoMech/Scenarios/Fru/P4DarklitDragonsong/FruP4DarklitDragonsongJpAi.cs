@@ -70,8 +70,7 @@ public sealed class FruP4DarklitDragonsongJpAi : IScenarioAi<FruP4DarklitDragons
         return after;
     }
 
-    private Vector3 OraclePosition()
-        => world.Children.OfType<SimEnemy>().FirstOrDefault(e => e.BNpcBaseId == BNpcBaseId.OracleP4)?.Position ?? Vector3.Zero;
+    private Vector3 OraclePosition() => state.OracleLanding ?? OracleCenterSpot;
 
     private Vector3 JustPastOracleFromCenter()
     {

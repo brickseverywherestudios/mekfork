@@ -61,6 +61,8 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(UltimateSuppressionAiReplayStateMessage), "ultimateSuppressionAiReplayState")]
 [JsonDerivedType(typeof(FruP3ApocalypseAiReplayStateMessage), "fruP3ApocalypseAiReplayState")]
 [JsonDerivedType(typeof(FruP3ApocalypseDanceLandingUpdateMessage), "fruP3ApocalypseDanceLandingUpdate")]
+[JsonDerivedType(typeof(FruP4DarklitDragonsongAiReplayStateMessage), "fruP4DarklitDragonsongAiReplayState")]
+[JsonDerivedType(typeof(FruP4DarklitDragonsongOracleLandingUpdateMessage), "fruP4DarklitDragonsongOracleLandingUpdate")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -307,6 +309,14 @@ public sealed record FruP3ApocalypseAiReplayStateMessage(
 
 // Where Darkest Dance lands: it chases the farthest player, which only the host knows.
 public sealed record FruP3ApocalypseDanceLandingUpdateMessage(float X, float Y, float Z) : MpMessage, IScenarioMidRunUpdateMessage;
+
+// The rolls FruP4DarklitDragonsongState derives its lineup from, plus the host Ai's Somber Dance tank.
+public sealed record FruP4DarklitDragonsongAiReplayStateMessage(
+    PartyRole ChainedTank, PartyRole ChainedHealer, PartyRole[] DpsOrder, int Shape, int TetherWaterIndex, int FreeWaterIndex,
+    PartyRole SpiritTakerTarget, bool EastWing, PartyRole? SomberDanceTank) : MpMessage, IScenarioReplayStateMessage;
+
+// Where the Oracle's latest jump lands: Spirit Taker and Somber Dance chase players, which only the host knows.
+public sealed record FruP4DarklitDragonsongOracleLandingUpdateMessage(int Jumps, float X, float Y, float Z) : MpMessage, IScenarioMidRunUpdateMessage;
 
 // The whole state surface. GlitchType holds a Predicate (not JSON-friendly); it and
 // OmegaAttack travel as a bool naming the static instance.

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 
@@ -20,24 +21,37 @@ public sealed class FruP4DarklitDragonsongState
     public const float TowersAt = 32.2f;
     public const float DarkWaterAt = 40.15f;
     public const float TowerRadius = 4f;
+    public static readonly Vector3 OracleCenterSpot = new(0, 0, 5);
 
     private static readonly PartyRole[] LineupDps = [PartyRole.PhysRangedDps, PartyRole.CasterDps, PartyRole.MeleeDpsA, PartyRole.MeleeDpsB];
     private static readonly PartyRole[] BaitDps = [PartyRole.CasterDps, PartyRole.PhysRangedDps, PartyRole.MeleeDpsA, PartyRole.MeleeDpsB];
 
     private readonly PartyRole[] links;
 
+    public PartyRole ChainedTank { get; }
+    public PartyRole ChainedHealer { get; }
+    public IReadOnlyList<PartyRole> DpsOrder { get; }
+    public int Shape { get; }
     public IReadOnlyList<PartyRole> LineupOrder { get; }
     public int TetherWaterIndex { get; }
     public int FreeWaterIndex { get; }
     public PartyRole SpiritTakerTarget { get; }
     public bool EastWing { get; }
+    // Where the Oracle's last jump lands, set as it is cast; null before her first jump. Jumps
+    // counts them, so a peer can tell a fresh landing from one it already has.
+    public Vector3? OracleLanding { get; set; }
+    public int OracleJumps { get; set; }
+    // The tank the strat sends to bait Somber Dance. Set by the host's Ai, the only client that
+    // knows which tanks are bot-driven; null when the strat doesn't choose.
+    public PartyRole? SomberDanceTank { get; set; }
 
     public FruP4DarklitDragonsongState(Rng rng, FruP4DarklitDragonsongStateOverrides overrides)
     {
-        var tank = overrides.ChainedTank ?? rng.NextTankRole();
-        var healer = overrides.ChainedHealer ?? rng.NextHealerRole();
+        var tank = ChainedTank = overrides.ChainedTank ?? rng.NextTankRole();
+        var healer = ChainedHealer = overrides.ChainedHealer ?? rng.NextHealerRole();
         var dps = overrides.DpsOrder?.ToArray() ?? rng.Shuffle(LineupDps);
-        var shape = overrides.Shape ?? rng.Next(3);
+        DpsOrder = dps;
+        var shape = Shape = overrides.Shape ?? rng.Next(3);
         TetherWaterIndex = overrides.TetherWaterIndex ?? rng.Next(4);
         FreeWaterIndex = overrides.FreeWaterIndex ?? rng.Next(4);
         SpiritTakerTarget = overrides.SpiritTakerTarget ?? rng.NextRole();
@@ -55,6 +69,28 @@ public sealed class FruP4DarklitDragonsongState
         if (shape == 1) (lineup[1], lineup[2]) = (lineup[2], lineup[1]);
         if (shape == 2) (lineup[1], lineup[3]) = (lineup[3], lineup[1]);
         LineupOrder = lineup;
+    }
+
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP4DarklitDragonsongState? FromNetworkReplay(PartyRole chainedTank, PartyRole chainedHealer, IReadOnlyList<PartyRole> dpsOrder,
+        int shape, int tetherWaterIndex, int freeWaterIndex, PartyRole spiritTakerTarget, bool eastWing, PartyRole? somberDanceTank)
+    {
+        if (!chainedTank.IsTank() || chainedHealer is not (PartyRole.RegenHealer or PartyRole.ShieldHealer)) return null;
+        if (dpsOrder.Count != LineupDps.Length || !LineupDps.All(dpsOrder.Contains)) return null;
+        if (shape is < 0 or > 2 || tetherWaterIndex is < 0 or > 3 || freeWaterIndex is < 0 or > 3) return null;
+        if (!Enum.IsDefined(spiritTakerTarget) || somberDanceTank is { } somber && !somber.IsTank()) return null;
+        return new FruP4DarklitDragonsongState(Rng.Detached, new FruP4DarklitDragonsongStateOverrides
+        {
+            ChainedTank = chainedTank,
+            ChainedHealer = chainedHealer,
+            DpsOrder = dpsOrder.ToList(),
+            Shape = shape,
+            TetherWaterIndex = tetherWaterIndex,
+            FreeWaterIndex = freeWaterIndex,
+            SpiritTakerTarget = spiritTakerTarget,
+            EastWing = eastWing,
+        })
+        { SomberDanceTank = somberDanceTank };
     }
 
     public PartyRole TetherWater => LineupOrder[TetherWaterIndex];

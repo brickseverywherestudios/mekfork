@@ -9,16 +9,18 @@ using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.Map;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P4DarklitDragonsong.FruP4DarklitDragonsongState;
 using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P4DarklitDragonsong;
 
-public sealed class FruP4DarklitDragonsongScenario : IScenario
+public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
 {
     public string Name => "Darklit Dragonsong";
     public IPhase Phase => FruZone.P4;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP4DarklitDragonsongAi(playerBaitsSomberDance: false), new FruP4DarklitDragonsongAi(playerBaitsSomberDance: true), new FruP4DarklitDragonsongJpAi()];
 
@@ -34,12 +36,15 @@ public sealed class FruP4DarklitDragonsongScenario : IScenario
     // It takes every one of these and breaks on any other hit.
     private static readonly uint[] FragmentSurvives = [ActionId.DarklitDragonsong, ActionId.HallowedWingsLeft, ActionId.HallowedWingsRight];
 
-    private static readonly Vector3 OracleCenterSpot = new(0, 0, 5);
     private static readonly Vector3 UsurperAkhMornSpot = new(-3.55f, 0, 0);
     private static readonly Vector3 OracleAkhMornSpot = new(3.53f, 0, 0);
 
     private SimWorld world = null!;
     private FruP4DarklitDragonsongState state = null!;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP4DarklitDragonsongState? lastState;
+    // Edge-triggers BuildMidRunUpdateMessage.
+    private int oracleJumpsSent;
     private SimEnemy? usurper, oracle, wyrm, fragment, gaia, ryne;
     private readonly List<Vector3> akhRhaiPuddles = [];
     private readonly List<SimTether> links = [];
@@ -50,6 +55,8 @@ public sealed class FruP4DarklitDragonsongScenario : IScenario
     {
         world = worldParam;
         state = new FruP4DarklitDragonsongState(world.Rng, settingsWindow.Overrides);
+        lastState = state;
+        oracleJumpsSent = 0;
         links.Clear();
         fragmentBroken = false;
         towers.Clear();
@@ -308,6 +315,8 @@ public sealed class FruP4DarklitDragonsongScenario : IScenario
         if (oracle is not { } boss) return;
         var offset = position - boss.Position;
         var landing = offset.Length() <= JumpLandingShort ? boss.Position : position - Vector3.Normalize(offset) * JumpLandingShort;
+        state.OracleLanding = landing;
+        state.OracleJumps++;
         world.Events.Add(delay, () => boss.SetPosition(landing));
     }
 
@@ -351,5 +360,35 @@ public sealed class FruP4DarklitDragonsongScenario : IScenario
     public void Tick(float delta, float elapsed)
     {
         foreach (var tower in towers) tower.Tick(world.Party);
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP4DarklitDragonsongAiReplayStateMessage(s.ChainedTank, s.ChainedHealer, s.DpsOrder.ToArray(), s.Shape,
+                s.TetherWaterIndex, s.FreeWaterIndex, s.SpiritTakerTarget, s.EastWing, s.SomberDanceTank)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
+    {
+        if (message is not FruP4DarklitDragonsongAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP4DarklitDragonsongState.FromNetworkReplay(msg.ChainedTank, msg.ChainedHealer, msg.DpsOrder, msg.Shape, msg.TetherWaterIndex,
+                msg.FreeWaterIndex, msg.SpiritTakerTarget, msg.EastWing, msg.SomberDanceTank) is not { } shadowState) return null;
+        ((IScenarioAi<FruP4DarklitDragonsongState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
+        return shadowState;
+    }
+
+    public MpMessage? BuildMidRunUpdateMessage()
+    {
+        if (lastState is not { OracleLanding: { } landing } s || s.OracleJumps == oracleJumpsSent) return null;
+        oracleJumpsSent = s.OracleJumps;
+        return new FruP4DarklitDragonsongOracleLandingUpdateMessage(s.OracleJumps, landing.X, landing.Y, landing.Z);
+    }
+
+    public void ApplyMidRunUpdate(object shadowStateObj, MpMessage message)
+    {
+        if (shadowStateObj is not FruP4DarklitDragonsongState shadowState || message is not FruP4DarklitDragonsongOracleLandingUpdateMessage update) return;
+        if (update.Jumps <= shadowState.OracleJumps || !float.IsFinite(update.X) || !float.IsFinite(update.Y) || !float.IsFinite(update.Z)) return;
+        shadowState.OracleJumps = update.Jumps;
+        shadowState.OracleLanding = new Vector3(update.X, update.Y, update.Z);
     }
 }
