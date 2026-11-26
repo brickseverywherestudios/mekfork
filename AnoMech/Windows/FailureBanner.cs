@@ -39,7 +39,7 @@ internal sealed class FailureBanner : Window, IDisposable
 
     private void OnMechanicFailed(string failure)
     {
-        if (Plugin.Config.EnableMechanicResultMarks) return;
+        if (Plugin.Config.EnableMechanicResultMarks || !Plugin.Config.ShowFailureBanner) return;
         reason = failure;
         shownAt = DateTime.UtcNow;
         IsOpen = true;

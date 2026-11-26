@@ -66,6 +66,15 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
+        var failureBanner = configuration.ShowFailureBanner;
+        if (ImGui.Checkbox("Show \"Mechanic failed\" banner", ref failureBanner))
+        {
+            configuration.ShowFailureBanner = failureBanner;
+            configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("A large banner in the middle of the screen when a mechanic is failed. Not shown while success/failure marks are on.");
+
         var userActions = configuration.EnableUserActions;
         if (ImGui.Checkbox("Resolve your own actions", ref userActions))
         {
