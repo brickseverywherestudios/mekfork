@@ -47,7 +47,7 @@ public sealed class FruP2LightRampantAi : IScenarioAi<FruP2LightRampantState>
 
     private static float HammerSnapshotAt(int wave) => HammerAt(wave) - FruHolyPuddles.SnapshotBeforeHit;
 
-    private int Stacks(PartyRole role) => world.Party.Get(role)?.FindStatus(StatusId.Lightsteeped)?.Stacks ?? 0;
+    private int Stacks(PartyRole role) => state.SteepedStacks(role);
 
     private static Vector3 FromSim(float north, float east) => new(east * S, 0, -north * S);
 

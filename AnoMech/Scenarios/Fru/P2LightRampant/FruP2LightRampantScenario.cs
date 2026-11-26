@@ -8,16 +8,18 @@ using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Map;
 using AnoMech.Core.SimObjects;
+using AnoMech.Multiplayer;
 using static AnoMech.Scenarios.Fru.FruConstants;
 using static AnoMech.Scenarios.Fru.P2LightRampant.FruP2LightRampantState;
 using Actions = AnoMech.Scenarios.Fru.FruActions;
 
 namespace AnoMech.Scenarios.Fru.P2LightRampant;
 
-public sealed class FruP2LightRampantScenario : IScenario
+public sealed class FruP2LightRampantScenario : IMultiplayerReplayable
 {
     public string Name => "Light Rampant";
     public IPhase Phase => FruZone.P2;
+    public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP2LightRampantAi(), new FruP2LightRampantJpAi()];
 
@@ -50,6 +52,10 @@ public sealed class FruP2LightRampantScenario : IScenario
 
     private SimWorld world = null!;
     private FruP2LightRampantState state = null!;
+    // Polled by the multiplayer host; null until Run has rolled.
+    private FruP2LightRampantState? lastState;
+    // Edge-triggers BuildMidRunUpdateMessage.
+    private int steepedVersionSent;
     private SimEnemy? usurper;
     private readonly List<SimEnemy?>[] orbs = [[], []];
     private readonly List<SimTether> links = [];
@@ -62,6 +68,8 @@ public sealed class FruP2LightRampantScenario : IScenario
         world = worldParam;
         var chainRing = selectedAi is { } strat && strat < AiStrats.Count && AiStrats[strat] is IFruP2LightRampantChainRing ring ? ring.ClockwiseRing : null;
         state = new FruP2LightRampantState(world.Rng, world.Party.PlayerRole, settingsWindow.Overrides, chainRing);
+        lastState = state;
+        steepedVersionSent = 0;
         foreach (var wave in orbs) wave.Clear();
         links.Clear();
         puddles.Clear();
@@ -293,5 +301,37 @@ public sealed class FruP2LightRampantScenario : IScenario
         foreach (var tower in towers) tower.Tick(world.Party);
         centerTower?.Tick(world.Party);
         puddles.BleedWhoeverStandsIn(world, elapsed, "stepped in a Luminous Hammer puddle");
+        foreach (var role in Enum.GetValues<PartyRole>())
+            state.SetSteepedStacks(role, world.Party.Get(role)?.FindStatus(StatusId.Lightsteeped)?.Stacks ?? 0);
+    }
+
+    public MpMessage? BuildReplayStateMessage()
+        => lastState is { } s
+            ? new FruP2LightRampantAiReplayStateMessage(s.Slots.ToArray(), s.InitiallySteeped.ToArray(), s.WeightSlot, s.NorthOrbsFirst, s.Pairs,
+                s.SupportPairs)
+            : null;
+
+    public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
+    {
+        if (message is not FruP2LightRampantAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
+        if (FruP2LightRampantState.FromNetworkReplay(msg.Slots, msg.InitiallySteeped, msg.WeightSlot, msg.NorthOrbsFirst, msg.Pairs,
+                msg.SupportPairs) is not { } shadowState) return null;
+        ((IScenarioAi<FruP2LightRampantState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
+        return shadowState;
+    }
+
+    public MpMessage? BuildMidRunUpdateMessage()
+    {
+        if (lastState is not { } s || s.SteepedVersion == steepedVersionSent) return null;
+        steepedVersionSent = s.SteepedVersion;
+        return new FruP2LightRampantSteepedUpdateMessage(s.SteepedVersion, s.AllSteepedStacks.ToDictionary());
+    }
+
+    public void ApplyMidRunUpdate(object shadowStateObj, MpMessage message)
+    {
+        if (shadowStateObj is not FruP2LightRampantState shadowState || message is not FruP2LightRampantSteepedUpdateMessage update) return;
+        if (update.Version <= shadowState.SteepedVersion || update.Stacks.Count > 8) return;
+        if (!update.Stacks.All(s => Enum.IsDefined(s.Key) && s.Value is >= 0 and <= 5)) return;
+        shadowState.ReplaceSteepedStacks(update.Version, update.Stacks);
     }
 }

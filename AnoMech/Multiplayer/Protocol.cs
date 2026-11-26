@@ -69,6 +69,8 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
 [JsonDerivedType(typeof(FruP5FulgentBladeAiReplayStateMessage), "fruP5FulgentBladeAiReplayState")]
 [JsonDerivedType(typeof(FruP3UltimateRelativityAiReplayStateMessage), "fruP3UltimateRelativityAiReplayState")]
+[JsonDerivedType(typeof(FruP2LightRampantAiReplayStateMessage), "fruP2LightRampantAiReplayState")]
+[JsonDerivedType(typeof(FruP2LightRampantSteepedUpdateMessage), "fruP2LightRampantSteepedUpdate")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -399,3 +401,12 @@ public sealed record FruP5FulgentBladeAiReplayStateMessage(
 public sealed record FruP3UltimateRelativityAiReplayStateMessage(
     Dictionary<PartyRole, RelativityDebuff> Debuffs, bool DpsIce, int North, int ClockwiseMask, PartyRole[] Darkness, PartyRole ShellCrusherTarget)
     : MpMessage, IScenarioReplayStateMessage;
+
+// Slots is the chained loop (0-5) then the hammer baiters (6-7), resolved on the host from its
+// per-seat duties and strat.
+public sealed record FruP2LightRampantAiReplayStateMessage(
+    PartyRole[] Slots, PartyRole[] InitiallySteeped, int WeightSlot, bool NorthOrbsFirst, bool Pairs, bool SupportPairs)
+    : MpMessage, IScenarioReplayStateMessage;
+
+// Everyone's Lightsteeped stacks: a peer's own character doesn't carry them in the sim.
+public sealed record FruP2LightRampantSteepedUpdateMessage(int Version, Dictionary<PartyRole, int> Stacks) : MpMessage, IScenarioMidRunUpdateMessage;
