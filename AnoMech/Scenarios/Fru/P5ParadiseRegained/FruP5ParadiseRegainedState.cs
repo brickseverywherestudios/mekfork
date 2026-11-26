@@ -30,6 +30,13 @@ public sealed class FruP5ParadiseRegainedState
         DarkFirst = overrides.DarkFirst ?? rng.NextBool();
     }
 
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP5ParadiseRegainedState? FromNetworkReplay(int rotation, bool eastSecond, bool darkFirst)
+        => rotation is < 0 or > 2
+            ? null
+            : new FruP5ParadiseRegainedState(Rng.Detached,
+                new FruP5ParadiseRegainedStateOverrides { Rotation = rotation, EastSecond = eastSecond, DarkFirst = darkFirst });
+
     public bool IsDark(int wing) => wing == 0 ? DarkFirst : !DarkFirst;
 
     private int TowerIndex(int tower)
