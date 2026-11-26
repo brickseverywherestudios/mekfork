@@ -57,6 +57,24 @@ public sealed class FruP4CrystallizeTimeState
         SpiritTakerTarget = overrides.SpiritTakerTarget ?? rng.NextRole();
     }
 
+    // A peer's copy of the host's rolls; null if the message doesn't describe a possible run.
+    public static FruP4CrystallizeTimeState? FromNetworkReplay(IReadOnlyDictionary<PartyRole, CrystallizeDebuff> debuffs, bool slowNorthwest,
+        CrystallizeCorner corner, IReadOnlyList<PartyRole> quietus, PartyRole spiritTakerTarget)
+    {
+        if (debuffs.Count != 8 || !Enum.GetValues<PartyRole>().All(debuffs.ContainsKey)) return null;
+        if (Enum.GetValues<CrystallizeDebuff>().Any(d => debuffs.Values.Count(v => v == d) != (IsRed(d) ? 2 : 1))) return null;
+        if (!Enum.IsDefined(corner) || !Enum.IsDefined(spiritTakerTarget)) return null;
+        if (quietus.Count != 3 || quietus.Distinct().Count() != 3 || !quietus.All(r => Enum.IsDefined(r))) return null;
+        return new FruP4CrystallizeTimeState(Rng.Detached, PartyRole.MainTank, new FruP4CrystallizeTimeStateOverrides
+        {
+            Debuffs = debuffs.ToDictionary(),
+            SlowNorthwest = slowNorthwest,
+            Corner = corner,
+            Quietus = quietus.ToList(),
+            SpiritTakerTarget = spiritTakerTarget,
+        });
+    }
+
     public CrystallizeDebuff Debuff(PartyRole role) => debuffs[role];
     public IEnumerable<PartyRole> Holders(CrystallizeDebuff debuff) => debuffs.Where(d => d.Value == debuff).Select(d => d.Key);
     public static bool IsRed(CrystallizeDebuff debuff) => debuff is CrystallizeDebuff.RedAero or CrystallizeDebuff.RedIce;
@@ -94,6 +112,25 @@ public sealed class FruP4CrystallizeTimeState
 
     // Live: where each head dropped the puddle of the player it caught, as the scenario spawns them.
     public IReadOnlyDictionary<PartyRole, Vector3> DragonPuddles => dragonPuddles;
-    internal void AddDragonPuddle(PartyRole catcher, Vector3 position) => dragonPuddles[catcher] = position;
-    internal void RemoveDragonPuddle(PartyRole catcher) => dragonPuddles.Remove(catcher);
+    // Bumped on every change to DragonPuddles, so the multiplayer host can tell when to resend them.
+    public int DragonPuddlesVersion { get; private set; }
+
+    internal void AddDragonPuddle(PartyRole catcher, Vector3 position)
+    {
+        dragonPuddles[catcher] = position;
+        DragonPuddlesVersion++;
+    }
+
+    internal void RemoveDragonPuddle(PartyRole catcher)
+    {
+        if (dragonPuddles.Remove(catcher)) DragonPuddlesVersion++;
+    }
+
+    // A peer's copy of the host's puddles.
+    internal void ReplaceDragonPuddles(int version, IReadOnlyDictionary<PartyRole, Vector3> puddles)
+    {
+        dragonPuddles.Clear();
+        foreach (var (catcher, position) in puddles) dragonPuddles[catcher] = position;
+        DragonPuddlesVersion = version;
+    }
 }
