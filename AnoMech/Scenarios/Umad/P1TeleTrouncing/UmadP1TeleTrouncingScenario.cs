@@ -61,15 +61,6 @@ public sealed class UmadP1TeleTrouncingScenario : IMultiplayerReplayable
     private readonly List<string> arrowSoakFailures = [];
     private readonly UmadP1TeleTrouncingSettingsWindow settingsWindow = new();
 
-    // Gimmick rows the helpers' hit VFX ride on. Double-trouble Trap's and the arrow bursts' are
-    // drawn by hand and stay unpreloaded so a native play can't double them.
-    private static readonly (ushort Id, string Key)[] ThunderFireTimelines =
-    [
-        (6090, "mon_sp/gimmick/z3oa_boss_gimmick03"),
-        (7530, "mon_sp/gimmick/n4g1_boss_gimmick06"),
-        (5823, "mon_sp/gimmick/e3d3_boss_gimmick01"),
-    ];
-
     public UmadP1TeleTrouncingState? LastState { get; private set; }
 
     // Local to UmadZone.Origin (100, 0, 100). Full 3D, because the two tethers attach to
@@ -282,7 +273,7 @@ public sealed class UmadP1TeleTrouncingScenario : IMultiplayerReplayable
         world.Events.Add(14.42f, () => SpawnArrowBursts(first: true));
         world.Events.Add(15.29f, SpawnArrowObjects);
         world.Events.Add(17.43f, () => SpawnArrowBursts(first: false));
-        world.Events.Add(18.32f, SpawnArrowObjects);
+        world.Events.Add(18.20f, SpawnArrowObjects);
 
         world.Events.Add(15.58f, () => PlayKefkaLine(0x3U));
 
@@ -378,8 +369,6 @@ public sealed class UmadP1TeleTrouncingScenario : IMultiplayerReplayable
 
     public void RunInstanceEvents(SimWorld instanceWorld)
     {
-        Natives.TimelinePreload.Preload(ThunderFireTimelines, "UmadP1TeleTrouncing");
-
         instanceWorld.Events.Add(3f, () => instanceWorld.Map.LogArena("3s"));
         instanceWorld.Events.Add(10f, () => instanceWorld.Map.LogArena("10s"));
     }

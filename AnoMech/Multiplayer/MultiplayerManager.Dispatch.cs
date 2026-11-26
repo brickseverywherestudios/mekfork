@@ -268,9 +268,9 @@ public sealed partial class MultiplayerManager
                 var who = Session.NameOf(applied.PeerId);
                 if (Session.RoleOf(applied.PeerId) is not { } reporter) break;
                 var sprint = applied.StatusId == JobActions.SprintStatus;
-                if (!HostReport.IsReported(applied.StatusId))
+                if (!ReportedStatuses.Contains(applied.StatusId))
                 {
-                    DiagnosticLog.Warn($"[Multiplayer] Host: {who} reported role status {applied.StatusId}, which is not one the host acts on -- dropping.");
+                    DiagnosticLog.Warn($"[Multiplayer] Host: {who} reported role status {applied.StatusId}, which the host doesn't act on -- dropping.");
                     break;
                 }
                 var duration = NetGuard.Clamp(applied.Duration, 0f, NetGuard.MaxMitigationSeconds);

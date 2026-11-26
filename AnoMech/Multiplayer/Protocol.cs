@@ -71,6 +71,8 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP3UltimateRelativityAiReplayStateMessage), "fruP3UltimateRelativityAiReplayState")]
 [JsonDerivedType(typeof(FruP2LightRampantAiReplayStateMessage), "fruP2LightRampantAiReplayState")]
 [JsonDerivedType(typeof(FruP2LightRampantSteepedUpdateMessage), "fruP2LightRampantSteepedUpdate")]
+[JsonDerivedType(typeof(TeaI1LimitCutAiReplayStateMessage), "teaI1LimitCutAiReplayState")]
+[JsonDerivedType(typeof(TeaP3WormholeAiReplayStateMessage), "teaP3WormholeAiReplayState")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -307,6 +309,14 @@ public sealed record UmadP5CelestriadAiReplayStateMessage(
 public sealed record UltimateSuppressionAiReplayStateMessage(
     PartyRole LightPillar, PartyRole[] MistralSongs, PartyRole[] Eruptions,
     PartyRole Gaol, PartyRole FlamingCrush, int[] SuppressionSpotOrder) : MpMessage, IScenarioReplayStateMessage;
+
+// The numbers and the first Hawk Blaster axis; a dead number's retarget is the host's alone.
+public sealed record TeaI1LimitCutAiReplayStateMessage(PartyRole[] Numbers, int FirstBlasterAxis) : MpMessage, IScenarioReplayStateMessage;
+
+// Every roll; the chakrams' and Incinerating Heat's targets are picked live and the peer reads them
+// off its own screen.
+public sealed record TeaP3WormholeAiReplayStateMessage(
+    bool BruteJusticeNorthWest, bool PuddlesMirrored, PartyRole[] Numbers, PartyRole[] Enumerations) : MpMessage, IScenarioReplayStateMessage;
 
 // InFirst is TopP6WaveCannon2Ai's entire read set.
 public sealed record TopP6WaveCannon2AiReplayStateMessage(bool InFirst) : MpMessage, IScenarioReplayStateMessage;

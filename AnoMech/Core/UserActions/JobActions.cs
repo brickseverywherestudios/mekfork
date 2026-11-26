@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using AnoMech.Core.Native.Implementations;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
@@ -296,6 +297,10 @@ internal static unsafe class JobActions
         [7531] = [Status(1191, 20f)],   // Rampart
         [7535] = [EnemyStatus(1193, 15f)],   // Reprisal
 
+        // Cleanses
+        [7568] = [Dispel()],   // Esuna
+        [3561] = [Dispel()],   // The Warden's Paean (its barrier on an unafflicted target is not modelled)
+
         // Tank LB3
         [199]   = [TargetStatus(196, 8f)],    // Last Bastion
         [4240]  = [TargetStatus(863, 8f)],    // Land Waker
@@ -308,7 +313,7 @@ internal static unsafe class JobActions
         [45] = [Combo(Gauge(WarBeast, 10), Status(2677, 30f))],   // Storm's Eye (+ Surging Tempest)
         [52] = [Gauge(WarBeast, 50), Status(1897, 30f)],          // Infuriate (+ Nascent Chaos)
         [16462] = [Combo(Status(2677, 30f), Gauge(WarBeast, 20))],  // Mythril Tempest → Surging Tempest + 20 Beast
-        [7389]  = [Status(1177, 15f, 3), Status(2624, 30f)],  // Inner Release (3 stk) + Primal Rend Ready
+        [7389]  = [Status(1177, 15f, 3), Status(2624, 30f), Status(2663, 15f)],  // Inner Release (3 stk) + Primal Rend Ready + Inner Strength
         [25753] = [Status(3834, 20f)],         // Primal Rend → Primal Ruination Ready
         // mitigation:
         [43]    = [Status(409, 10f)],          // Holmgang
@@ -745,6 +750,15 @@ internal static unsafe class JobActions
         foreach (var effect in effects) effect.Apply(ctx);
     }
 
+    // Only the cleanse the action makes, for a copy of the world that holds the statuses but
+    // didn't see the rest of the press.
+    public static void ApplyDispel(SimCharacter caster, uint actionId, ulong targetId)
+    {
+        if (!Actions.TryGetValue(actionId, out var effects)) return;
+        var ctx = new ActionContext(actionId, targetId, caster, System.Random.Shared);
+        foreach (var effect in effects.OfType<DispelEffect>()) effect.Apply(ctx);
+    }
+
     public static void ApplyAutoAttack(SimCharacter caster, uint actionId, ulong targetId, System.Random rng)
         => ApplyJobEffects(AutoAttacks, caster, actionId, targetId, rng);
 
@@ -820,6 +834,7 @@ internal static unsafe class JobActions
     private static IActionEffect Status(ushort statusId, float duration, int stacks = 0) => new StatusEffect(statusId, duration, stacks);
     private static IActionEffect TargetStatus(ushort statusId, float duration, int stacks = 0) => new TargetStatusEffect(statusId, duration, stacks);
     private static IActionEffect EnemyStatus(ushort statusId, float duration, int stacks = 0) => new EnemyStatusEffect(statusId, duration, stacks);
+    private static IActionEffect Dispel() => new DispelEffect();
     private static IActionEffect Combo(params IActionEffect[] inner) => new ComboEffect(inner);
     private static IActionEffect Random(float chance, params IActionEffect[] inner) => new RandomEffect(chance, inner);
     private static IActionEffect Unlocks(uint actionId, params IActionEffect[] inner) => new UnlocksEffect(actionId, inner);

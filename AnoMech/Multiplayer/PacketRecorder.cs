@@ -321,6 +321,12 @@ internal sealed class PacketRecorder
 
     private void RecordWorld(GamePacket packet) => Add(packet);
 
+    private void RecordBattleTalk(uint speakerNameId, uint textId, uint durationMs, uint speakerEntityId)
+    {
+        if (Recording) SimAssets.WarnIfUnknown(SimAssetKind.BattleTalk, textId, "BattleTalk");
+        Add(new BattleTalkPacket(speakerNameId, textId, durationMs, ActorOf(speakerEntityId)));
+    }
+
     private void RecordHaters(IReadOnlyList<Hater> haters)
     {
         var sent = new List<HaterPacket>();
@@ -518,6 +524,13 @@ internal sealed class PacketRecorder
             recorder.realDirector.Commence();
             recorder.RecordWorld(new CommencePacket());
         }
+
+        public bool BattleTalk(uint speakerNameId, uint textId, uint durationMs, uint speakerEntityId)
+        {
+            if (!recorder.realDirector.BattleTalk(speakerNameId, textId, durationMs, speakerEntityId)) return false;
+            recorder.RecordBattleTalk(speakerNameId, textId, durationMs, speakerEntityId);
+            return true;
+        }
     }
 
     private sealed class RecordingHaterList(PacketRecorder recorder) : IHaterList
@@ -537,6 +550,7 @@ internal sealed class PacketRecorder
         public string? StartBlockedReason(out string? settling) => Real.StartBlockedReason(out settling);
         public void EndSpeedBuffs() => Real.EndSpeedBuffs();
         public bool IsActive => Real.IsActive;
+        public bool IsReady(bool mapEffects) => Real.IsReady(mapEffects);
         public void TickGuard() => Real.TickGuard();
         public bool Enter(uint territoryId, Vector3 playerSpawn) => Real.Enter(territoryId, playerSpawn);
         public void Revert() => Real.Revert();
