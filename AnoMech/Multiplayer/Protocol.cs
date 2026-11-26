@@ -66,6 +66,7 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(FruP4DarklitDragonsongOracleLandingUpdateMessage), "fruP4DarklitDragonsongOracleLandingUpdate")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeAiReplayStateMessage), "fruP4CrystallizeTimeAiReplayState")]
 [JsonDerivedType(typeof(FruP4CrystallizeTimeLiveUpdateMessage), "fruP4CrystallizeTimeLiveUpdate")]
+[JsonDerivedType(typeof(FruP5FulgentBladeAiReplayStateMessage), "fruP5FulgentBladeAiReplayState")]
 [JsonDerivedType(typeof(TopP5DeltaBeyondDefenseUpdateMessage), "topP5DeltaBeyondDefenseUpdate")]
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
@@ -386,3 +387,8 @@ public sealed record PeerAppliedRoleStatusMessage(Guid PeerId, List<PartyRole> R
 // Peer -> host: a step of this player's own action (IUserActions.Acted), which the host shows on
 // the peer's seat for the rest of the party. Target names an actor as a GamePacket does.
 public sealed record ActedMessage(Guid PeerId, PlayerActionStep Step, ActionType ActionType, uint ActionId, uint Target, float CastSeconds) : MpMessage, IPeerMessage;
+
+// CardinalDarkInward has one entry per seam group.
+public sealed record FruP5FulgentBladeAiReplayStateMessage(
+    int PositionIndex, int RotationIndex, bool Mirrored, bool[] CardinalDarkInward, int AkhMornLeftPick, int AkhMornRightPick)
+    : MpMessage, IScenarioReplayStateMessage;
