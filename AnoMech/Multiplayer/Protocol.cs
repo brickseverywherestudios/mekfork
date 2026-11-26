@@ -397,10 +397,11 @@ public sealed record FruP5FulgentBladeAiReplayStateMessage(
     int PositionIndex, int RotationIndex, bool Mirrored, bool[] CardinalDarkInward, int AkhMornLeftPick, int AkhMornRightPick)
     : MpMessage, IScenarioReplayStateMessage;
 
-// Darkness holds the Unholy Darkness target of each fire wave.
+// Darkness holds the Unholy Darkness target of each fire wave; MarkPressOrder is the host Ai's, for
+// a strat that marks itself.
 public sealed record FruP3UltimateRelativityAiReplayStateMessage(
-    Dictionary<PartyRole, RelativityDebuff> Debuffs, bool DpsIce, int North, int ClockwiseMask, PartyRole[] Darkness, PartyRole ShellCrusherTarget)
-    : MpMessage, IScenarioReplayStateMessage;
+    Dictionary<PartyRole, RelativityDebuff> Debuffs, bool DpsIce, int North, int ClockwiseMask, PartyRole[] Darkness, PartyRole ShellCrusherTarget,
+    PartyRole[]? MarkPressOrder) : MpMessage, IScenarioReplayStateMessage;
 
 // Slots is the chained loop (0-5) then the hammer baiters (6-7), resolved on the host from its
 // per-seat duties and strat.

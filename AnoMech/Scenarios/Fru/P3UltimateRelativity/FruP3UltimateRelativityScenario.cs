@@ -251,14 +251,14 @@ public sealed class FruP3UltimateRelativityScenario : IMultiplayerReplayable
     public MpMessage? BuildReplayStateMessage()
         => lastState is { } s
             ? new FruP3UltimateRelativityAiReplayStateMessage(Enum.GetValues<PartyRole>().ToDictionary(r => r, s.Debuff), s.DpsIce, s.North,
-                s.ClockwiseMask, Enumerable.Range(0, 3).Select(s.Darkness).ToArray(), s.ShellCrusherTarget)
+                s.ClockwiseMask, Enumerable.Range(0, 3).Select(s.Darkness).ToArray(), s.ShellCrusherTarget, s.MarkPressOrder?.ToArray())
             : null;
 
     public object? StartReplay(MpMessage message, int aiIndex, PartyRole myRole, SimWorld replayWorld)
     {
         if (message is not FruP3UltimateRelativityAiReplayStateMessage msg || aiIndex < 0 || aiIndex >= AiStrats.Count) return null;
         if (FruP3UltimateRelativityState.FromNetworkReplay(msg.Debuffs, msg.DpsIce, msg.North, msg.ClockwiseMask, msg.Darkness,
-                msg.ShellCrusherTarget) is not { } shadowState) return null;
+                msg.ShellCrusherTarget, msg.MarkPressOrder) is not { } shadowState) return null;
         ((IScenarioAi<FruP3UltimateRelativityState>)AiStrats[aiIndex]).Run(shadowState, replayWorld);
         return shadowState;
     }

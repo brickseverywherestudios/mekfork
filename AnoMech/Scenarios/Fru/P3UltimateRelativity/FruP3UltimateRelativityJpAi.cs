@@ -48,7 +48,8 @@ public sealed class FruP3UltimateRelativityJpAi : IScenarioAi<FruP3UltimateRelat
         selfMarks.Clear();
         var reactions = world.Stream("relativity-self-marks");
         var pressedAfter = Between(reactions, FirstPressEarliest, FirstPressLatest);
-        foreach (var role in reactions.Shuffle(Enum.GetValues<PartyRole>()))
+        var order = state.MarkPressOrder ??= reactions.Shuffle(Enum.GetValues<PartyRole>()).ToList();
+        foreach (var role in order)
         {
             var sign = MacroMark(role);
             selfMarks[role] = sign;
