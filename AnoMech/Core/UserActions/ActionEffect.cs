@@ -70,7 +70,9 @@ internal static class HostReport
 {
     public static bool IsReported(ushort statusId) => Mitigation.ByStatusId.ContainsKey(statusId)
         || Array.IndexOf(EnemyActionContext.KnockbackImmunityStatuses, statusId) >= 0
-        || statusId == JobActions.SprintStatus;
+        || statusId == JobActions.SprintStatus || statusId == KerakeiaStatus;
+
+    private const ushort KerakeiaStatus = 2938;
 
     public static void RoleStatus(IReadOnlyList<PartyRole> roles, ushort statusId, float duration, int stacks)
     {
@@ -92,6 +94,25 @@ internal sealed class TargetStatusEffect(ushort statusId, float duration, int st
             if (member is ISimPartyMember slot) roles.Add(slot.Role);
         }
         HostReport.RoleStatus(roles, statusId, duration, stacks);
+    }
+}
+
+// Leaf: grant a status to the other party members within `radius` of the caster, for a self-cast
+// action whose sheet row doesn't carry the radius it covers (Temperance).
+internal sealed class PartyStatusEffect(ushort statusId, float duration, float radius) : IActionEffect
+{
+    public void Apply(ActionContext ctx)
+    {
+        if (Plugin.Game is not { } game) return;
+        var roles = new List<PartyRole>();
+        foreach (var member in game.World.Party.ActiveMembers())
+        {
+            if (ReferenceEquals(member, ctx.Caster) || !ActionTargets.InRange(ctx.Caster, member, radius)) continue;
+            member.RemoveStatus(statusId);
+            member.AddStatusParam(statusId, 0, duration);
+            if (member is ISimPartyMember slot) roles.Add(slot.Role);
+        }
+        HostReport.RoleStatus(roles, statusId, duration, 0);
     }
 }
 
