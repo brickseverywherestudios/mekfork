@@ -8,6 +8,7 @@ using AnoMech.Core.Native.Implementations;
 using AnoMech.Core.Native.Implementations.Interop;
 using AnoMech.Core.Native.Implementations.Pointers;
 using AnoMech.Core.Native.Interfaces;
+using AnoMech.Core.UserActions;
 using AnoMech.Multiplayer;
 using AnoMech.Windows;
 using Dalamud.Game.Command;
@@ -65,6 +66,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 #endif
 
     private OpcodeUpdater? opcodeUpdater;
+    private ChatCommandHook? chatCommands;
 
     public Plugin()
     {
@@ -84,6 +86,8 @@ public sealed class Plugin : IAsyncDalamudPlugin
             Multiplayer = new MultiplayerManager();
             Runs = new RunController(Game, Multiplayer);
             if (Config.EnableUserActions) Natives.UserActions.Enable();
+            chatCommands = new ChatCommandHook(GameInterop);
+            chatCommands.CommandRun += SimMarkers.OnCommand;
             ConfigWindow = new ConfigWindow(this);
             MainWindow = new MainWindow(this);
 
@@ -103,7 +107,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Open AnoMech. Subcommands: config, mp, start, reset, leave"
+                HelpMessage = "Open AnoMech. Subcommands: config, mp, start, reset, leave, mark <sign> [<t>/<mo>/<me>/<1>-<8>]"
             });
             CommandManager.AddHandler(CommandAlias, new CommandInfo(OnCommand)
             {
@@ -225,6 +229,7 @@ public sealed class Plugin : IAsyncDalamudPlugin
         windowSystem.RemoveAllWindows();
 
         TimelineDebug.Shutdown();
+        chatCommands?.Dispose();
         Multiplayer?.Dispose();
         Game?.Dispose();
         Natives.Dispose();
@@ -310,6 +315,11 @@ public sealed class Plugin : IAsyncDalamudPlugin
 
     private void OnCommand(string command, string args)
     {
+        if (args.Trim().StartsWith("mark ", StringComparison.OrdinalIgnoreCase))
+        {
+            SimMarkers.OnCommand("/mk " + args.Trim()[5..]);
+            return;
+        }
         switch (args.Trim())
         {
             case "config":

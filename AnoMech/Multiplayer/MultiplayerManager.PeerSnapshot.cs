@@ -8,6 +8,7 @@ using AnoMech.Core.Game;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
+using AnoMech.Core.UserActions;
 
 namespace AnoMech.Multiplayer;
 
@@ -69,6 +70,15 @@ public sealed partial class MultiplayerManager
         if (IsHost || relay is not { IsConnected: true } || roles.Count == 0) return;
         DiagnosticLog.Info($"[Multiplayer] Peer: reporting applied status {statusId} on roles [{string.Join(",", roles)}] to host.");
         _ = Send(new PeerAppliedRoleStatusMessage(MyPeerId, roles.ToList(), statusId, duration, param));
+    }
+
+    // Peer -> host: a head marker this player placed with /mk; the host places it, so every client
+    // sees it. A null sign and family is "off".
+    internal void ReportMark(Sign? sign, MarkFamily? next, PartyRole target)
+    {
+        if (IsHost || relay is not { IsConnected: true }) return;
+        DiagnosticLog.Info($"[Multiplayer] Peer: asking the host to mark {target} ({sign?.ToString() ?? next?.ToString() ?? "off"}).");
+        _ = Send(new PeerMarkedMessage(MyPeerId, target, sign is { } s ? (int)s : -1, next is { } f ? (int)f : -1));
     }
 
     // ---- Host: applying a peer's reported pose to their puppet -------------
