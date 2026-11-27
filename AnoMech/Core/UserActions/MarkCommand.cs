@@ -4,9 +4,9 @@ using AnoMech.Core.Native.Interfaces;
 
 namespace AnoMech.Core.UserActions;
 
-internal enum MarkFamily { Attack, Bind, Ignore }
+public enum MarkFamily { Attack, Bind, Ignore }
 
-internal enum MarkTargetKind { Target, MouseOver, Self, PartySlot, Name }
+public enum MarkTargetKind { Target, MouseOver, Self, PartySlot, Name }
 
 // Slot is 1-8 for <1>-<8>; Name is the text the game left in place of a placeholder it resolved.
 internal readonly record struct MarkTarget(MarkTargetKind Kind, int Slot = 0, string Name = "");
