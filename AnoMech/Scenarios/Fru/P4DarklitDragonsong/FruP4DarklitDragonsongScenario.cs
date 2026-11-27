@@ -20,8 +20,8 @@ public sealed class FruP4DarklitDragonsongScenario : IMultiplayerReplayable
 {
     public string Name => "Darklit Dragonsong";
     public IPhase Phase => FruZone.P4;
-    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at the bosses turning targetable at P4's start.
-    public float BgmSecondsAtStart => 13.0f;
+    // UNVERIFIED: estimated from a pull's timeline, then moved 5.1s earlier by ear in playtesting.
+    public float BgmSecondsAtStart => 7.9f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP4DarklitDragonsongAi(playerBaitsSomberDance: false), new FruP4DarklitDragonsongAi(playerBaitsSomberDance: true), new FruP4DarklitDragonsongJpAi()];
