@@ -1,5 +1,8 @@
 using System;
+using System.Linq;
+using AnoMech.Core.Game.Party;
 using Dalamud.Bindings.ImGui;
+using static AnoMech.Scenarios.Fru.P4CrystallizeTime.FruP4CrystallizeTimeStateOverrides;
 
 namespace AnoMech.Scenarios.Fru.P4CrystallizeTime;
 
@@ -18,16 +21,20 @@ public sealed class FruP4CrystallizeTimeSettingsWindow
 
     public FruP4CrystallizeTimeStateOverrides Overrides { get; } = new();
 
+    // Solo, the player's own pick sits in this panel; a host assigns every seat from the
+    // Multiplayer window instead.
     public void Draw()
     {
         if (ImGui.Button("Auto")) Reset();
         if (SettingsGrid.Begin("##frup4crystallize"))
         {
-            SettingsGrid.FightOnlyNote();
-            SettingsGrid.Row("Your debuffs:");
-            SettingsGrid.ItemWidth(300);
-            var labels = Array.ConvertAll(PlayerChoices, c => c.Label);
-            if (ImGui.Combo("##ctplayer", ref selected, labels, labels.Length)) Select(selected);
+            if (!PerRole.SeatsActive)
+            {
+                SettingsGrid.Row("Your debuffs:");
+                SettingsGrid.ItemWidth(300);
+                var labels = Array.ConvertAll(PlayerChoices, c => c.Label);
+                if (ImGui.Combo("##ctplayer", ref selected, labels, labels.Length)) Select(selected);
+            }
 
             var slow = Overrides.SlowNorthwest;
             SettingsGrid.Row("Slowed hourglasses:");
@@ -49,12 +56,54 @@ public sealed class FruP4CrystallizeTimeSettingsWindow
         }
     }
 
+    // Every seat at once. A debuff every one of whose holders is already taken by another seat
+    // is greyed out, so the host can't ask for a party the fight can't deal.
+    public void DrawPerPlayer()
+    {
+        if (ImGui.Button("Auto")) Overrides.SeatDebuffs.Clear();
+        if (SettingsGrid.Begin("##frup4crystallizeplayers"))
+        {
+            foreach (var role in PerRole.All)
+            {
+                SettingsGrid.Row($"{SettingsGrid.RoleLabel(role)}{Occupant(role)}:");
+                SettingsGrid.ItemWidth(220);
+                DrawSeatDebuff(role);
+            }
+            SettingsGrid.End();
+        }
+        SettingsGrid.ConflictRows(Overrides.Validate());
+    }
+
+    private void DrawSeatDebuff(PartyRole role)
+    {
+        var current = Overrides.SeatDebuffs[role];
+        if (!ImGui.BeginCombo($"##ctseat{(int)role}", current is { } chosen ? Label(chosen) : "Auto")) return;
+        if (ImGui.Selectable("Auto", current == null)) Overrides.SeatDebuffs[role] = null;
+        foreach (var debuff in Enum.GetValues<CrystallizeDebuff>())
+        {
+            var full = PerRole.All.Count(r => r != role && Overrides.SeatDebuffs[r] == debuff) >= Holders(debuff);
+            var flags = full ? ImGuiSelectableFlags.Disabled : ImGuiSelectableFlags.None;
+            if (ImGui.Selectable($"{Label(debuff)}{(full ? " (taken)" : "")}##ct{debuff}", current == debuff, flags))
+                Overrides.SeatDebuffs[role] = debuff;
+        }
+        ImGui.EndCombo();
+    }
+
+    private static string Occupant(PartyRole role)
+    {
+        if (Plugin.Multiplayer is not { } mp) return "";
+        return mp.Session.ClaimedBy.TryGetValue(role, out var peerId)
+            ? peerId == mp.MyPeerId ? " (you)" : $" ({mp.Session.NameOf(peerId)})"
+            : " (bot)";
+    }
+
     private void Select(int index)
     {
         selected = index;
         Overrides.PlayerDebuffs = PlayerChoices[index].Debuffs;
     }
 
+    // Solo's own pick only: a host's seat assignments are kept apart.
     private void Reset()
     {
         Select(0);

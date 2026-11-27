@@ -27,6 +27,9 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
 
     public void DrawSettings() => settingsWindow.Draw();
     public object SettingsOverrides => settingsWindow.Overrides;
+    public bool HasPerPlayerSettings => true;
+    public void DrawPerPlayerSettings() => settingsWindow.DrawPerPlayer();
+    public IReadOnlyList<string> SettingsConflicts => settingsWindow.Overrides.Validate().Problems;
     private readonly FruP4CrystallizeTimeSettingsWindow settingsWindow = new();
 
     private const float PuddleLifetime = 17.8f;
