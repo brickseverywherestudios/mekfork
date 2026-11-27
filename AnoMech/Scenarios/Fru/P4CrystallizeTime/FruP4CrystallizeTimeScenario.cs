@@ -532,6 +532,7 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
             var stepper = world.Party.ActiveMembers()
                 .FirstOrDefault(m => m is ISimPartyMember slot && slot.Role != catcher && Vector3.Distance(m.Position, position) <= PuddleRadius);
             if (stepper is null) continue;
+            AnoMech.Core.DiagnosticLog.Info($"[CrystallizeTime] {((ISimPartyMember)stepper).Role} stepped in {catcher}'s puddle{(stepper.HasStatus(StatusId.Wyrmfang) ? "" : " with no Wyrmfang to cleanse")}.");
             stepper.RemoveStatus(StatusId.Wyrmfang);
             puddle.Visual?.DirectorEObjMod(7);
             world.Events.Add(PuddleFadeOut, () => puddle.Visual?.Despawn());

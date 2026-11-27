@@ -122,6 +122,7 @@ public sealed class FruP4CrystallizeTimeJpAi : IScenarioAi<FruP4CrystallizeTimeS
             {
                 CancelPendingMove(role);
                 puddleTargets[role] = source;
+                AnoMech.Core.DiagnosticLog.Info($"[CrystallizeTime] {role} heads for {RoleOf(source)}'s puddle.");
             }
             else
             {

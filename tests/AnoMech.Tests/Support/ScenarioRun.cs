@@ -234,6 +234,8 @@ internal sealed class ScenarioProbe(Game game, TraceLog log, Func<IEnumerable<Ao
 
     public void Log(string message) => log.Add("PROBE", message);
 
+    public IReadOnlyList<string> LogLines => log.Lines;
+
     public void Snapshot(string label)
         => log.Add("PROBE", $"=== {label} ==={Environment.NewLine}{WorldSnapshot.Describe(World, recentAoeChecks())}=== end {label} ===");
 
