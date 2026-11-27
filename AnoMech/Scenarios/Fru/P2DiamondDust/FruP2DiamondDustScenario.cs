@@ -17,6 +17,8 @@ public sealed class FruP2DiamondDustScenario : IMultiplayerReplayable
 {
     public string Name => "Diamond Dust";
     public IPhase Phase => FruZone.P2;
+    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at the P2 map change.
+    public float BgmSecondsAtStart => 23.8f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP2DiamondDustAi(), new FruP2DiamondDustJpAi()];

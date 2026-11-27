@@ -19,6 +19,8 @@ public sealed class FruP2LightRampantScenario : IMultiplayerReplayable
 {
     public string Name => "Light Rampant";
     public IPhase Phase => FruZone.P2;
+    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at the P2 map change.
+    public float BgmSecondsAtStart => 124.7f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP2LightRampantAi(), new FruP2LightRampantJpAi()];

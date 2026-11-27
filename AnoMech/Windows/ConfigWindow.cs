@@ -49,6 +49,18 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
+        ImGui.BeginDisabled(configuration.SuppressBgm);
+        var bgmOffset = configuration.BgmOffsetSeconds;
+        ImGui.SetNextItemWidth(160f * ImGuiHelpers.GlobalScale);
+        if (ImGui.SliderFloat("Music offset (seconds)", ref bgmOffset, -10f, 10f, "%+.1f"))
+        {
+            configuration.BgmOffsetSeconds = MathF.Round(bgmOffset, 1);
+            configuration.Save();
+        }
+        ImGui.EndDisabled();
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Shifts where the music starts on the next pull, for mechanics whose music lines up with the fight.\nPositive starts the track later in (music ahead), negative earlier. Ctrl+click to type a value.");
+
         var autoDisable = configuration.AutoDisableAutoRestart;
         if (ImGui.Checkbox("Disable auto-restart on failure", ref autoDisable))
         {

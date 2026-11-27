@@ -18,6 +18,8 @@ public sealed class FruP5ParadiseRegainedScenario : IMultiplayerReplayable
 {
     public string Name => "Paradise Regained";
     public IPhase Phase => FruZone.P5;
+    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at Pandora turning targetable.
+    public float BgmSecondsAtStart => 41.1f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP5ParadiseRegainedAi(), new FruP5ParadiseRegainedJpAi()];

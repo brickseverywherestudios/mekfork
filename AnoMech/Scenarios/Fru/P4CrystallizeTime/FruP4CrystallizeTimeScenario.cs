@@ -20,6 +20,8 @@ public sealed class FruP4CrystallizeTimeScenario : IMultiplayerReplayable
 {
     public string Name => "Crystallize Time";
     public IPhase Phase => FruZone.P4;
+    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at the bosses turning targetable at P4's start.
+    public float BgmSecondsAtStart => 84.5f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => strats;

@@ -15,6 +15,8 @@ public class Configuration : IPluginConfiguration
     public bool OpenSimMenuOnSupportedInstanceSolo { get; set; } = false;
     public bool EnableEventLogging { get; set; } = false;
     public bool SuppressBgm { get; set; } = true;
+    // Added to where a scenario's music starts, to line it up by ear.
+    public float BgmOffsetSeconds { get; set; } = 0f;
     public bool EnableMechanicResultMarks { get; set; } = false;
     public bool ShowFailureBanner { get; set; } = false;
     // Off: others see this player as a Lalafell stand-in in multiplayer.
