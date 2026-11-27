@@ -18,8 +18,8 @@ public sealed class FruP3UltimateRelativityScenario : IMultiplayerReplayable
 {
     public string Name => "Ultimate Relativity";
     public IPhase Phase => FruZone.P3;
-    // UNVERIFIED: the phase's track starts about 15s before Junction, by ear in playtesting.
-    public float BgmSecondsAtStart => 36.4f;
+    // UNVERIFIED: the phase's track starts about 13s before Junction, by ear in playtesting.
+    public float BgmSecondsAtStart => 34.3f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP3UltimateRelativityAi(), new FruP3UltimateRelativityJpAi()];
