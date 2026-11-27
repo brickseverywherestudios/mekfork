@@ -196,8 +196,13 @@ internal sealed unsafe class BattleCharas : IBattleCharas
         common.ClassJobId = preset.ClassJob;
         common.Position = placement.Position;
         common.Rotation = MathUtil.QuantizeRotation(MathUtil.NormalizeRotation(placement.Rotation));
-        WriteCustomize(ref common.CustomizeData);
-        WriteEquipment(&packet, preset, Plugin.DataManager.GetExcelSheet<Item>());
+        if (preset.Look is { } look)
+            PlayerLooks.Write(&packet, look);
+        else
+        {
+            WriteCustomize(ref common.CustomizeData);
+            WriteEquipment(&packet, preset, Plugin.DataManager.GetExcelSheet<Item>());
+        }
         // SpawnPlayerPacket.Common (+0x20) . _name (+0x232, 32 bytes)
         GameObjectHelper.WriteName((byte*)&packet + 0x20 + 0x232, 32, preset.Name);
 

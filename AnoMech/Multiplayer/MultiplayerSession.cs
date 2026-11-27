@@ -15,6 +15,8 @@ public sealed class MultiplayerSession
     public Dictionary<Guid, PeerBuildInfo> Builds { get; private set; } = new();
     // Each player's real job; their puppet carries it instead of the seat preset's.
     public Dictionary<Guid, byte> Jobs { get; private set; } = new();
+    // Each player's character appearance; a player missing here stays a Lalafell stand-in.
+    public Dictionary<Guid, PlayerLook> Looks { get; private set; } = new();
     // The players whose own debug bot plays their seat.
     public HashSet<Guid> DebugBots { get; private set; } = new();
     public bool Started { get; set; }
@@ -44,6 +46,9 @@ public sealed class MultiplayerSession
         Builds = msg.Builds.Take(NetGuard.MaxSessionPeers).ToDictionary(kv => kv.Key,
             kv => new PeerBuildInfo(NetGuard.Clean(kv.Value.Version), NetGuard.Clean(kv.Value.Checksum)));
         Jobs = msg.Jobs.Take(NetGuard.MaxSessionPeers).ToDictionary(kv => kv.Key, kv => NetGuard.ClassJob(kv.Value));
+        Looks = (msg.Looks ?? []).Take(NetGuard.MaxSessionPeers)
+            .Select(kv => (kv.Key, Look: NetGuard.Look(kv.Value))).Where(kv => kv.Look != null)
+            .ToDictionary(kv => kv.Key, kv => kv.Look!);
         DebugBots = NetGuard.Cap(msg.DebugBots, NetGuard.MaxSessionPeers).ToHashSet();
         Started = msg.Started;
         ScenarioIndex = msg.ScenarioIndex;
@@ -56,13 +61,16 @@ public sealed class MultiplayerSession
     public LobbyStateMessage ToMessage() => new(
         HostId, new Dictionary<PartyRole, Guid>(ClaimedBy), new Dictionary<Guid, string>(Names),
         new Dictionary<Guid, PeerBuildInfo>(Builds), new Dictionary<Guid, byte>(Jobs), Started, ScenarioIndex, SelectedAi, SelectedWaymark,
-        new List<string>(ScenarioSettings), ScenarioSettingsJson, DebugBots: DebugBots.ToList());
+        new List<string>(ScenarioSettings), ScenarioSettingsJson, DebugBots: DebugBots.ToList(),
+        Looks: new Dictionary<Guid, PlayerLook>(Looks));
 
     public PartyRole? RoleOf(Guid peerId) =>
         ClaimedBy.Where(kv => kv.Value == peerId).Select(kv => (PartyRole?)kv.Key).FirstOrDefault();
 
     // 0 = unknown, leaving the seat preset's job.
     public byte JobOf(Guid peerId) => Jobs.GetValueOrDefault(peerId);
+
+    public PlayerLook? LookOf(Guid peerId) => Looks.GetValueOrDefault(peerId);
 
     public string NameOf(Guid peerId) => Names.GetValueOrDefault(peerId, "Player") is { Length: > 0 } name ? name : "Player";
 }

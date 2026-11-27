@@ -122,6 +122,15 @@ internal sealed class MultiplayerUi
             }
         }
 
+        var shareLook = Plugin.Config.ShareCharacterLook;
+        if (ImGui.Checkbox("Show my character to others", ref shareLook))
+        {
+            Plugin.Config.ShareCharacterLook = shareLook;
+            Plugin.Config.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip("Others see your race, face, hair, glamour and weapons instead of a Lalafell stand-in.\nMods (Penumbra, Glamourer) aren't shared. Bots always stay Lalafells.");
+
         if (codeError is { } shown && shown.Code == code)
             ImGui.TextColored(BadColor, shown.Message);
         else if (mp.ConnectionError is { } err)

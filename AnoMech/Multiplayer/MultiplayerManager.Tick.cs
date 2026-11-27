@@ -185,7 +185,7 @@ public sealed partial class MultiplayerManager
     // checks, the lobby's start check. False once the session is over.
     private bool TickLink(float deltaSeconds)
     {
-        AnnounceOwnJobIfChanged();
+        AnnounceOwnJobIfChanged(deltaSeconds);
         ResendHelloUntilAcknowledged(deltaSeconds);
 
         if (IsHost)
