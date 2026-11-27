@@ -17,6 +17,8 @@ public class Configuration : IPluginConfiguration
     public bool SuppressBgm { get; set; } = true;
     public bool EnableMechanicResultMarks { get; set; } = false;
     public bool ShowFailureBanner { get; set; } = false;
+    // Off: others see this player as a Lalafell stand-in in multiplayer.
+    public bool ShareCharacterLook { get; set; } = true;
     public bool AutoCollapseWhileRunning { get; set; } = false;
     public bool AutoDisableAutoRestart { get; set; } = true;
     public string LastSelectedScenario { get; set; } = "";

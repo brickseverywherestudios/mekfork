@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AnoMech.Core.UserActions;
 
@@ -45,15 +46,28 @@ public static class PartyPresets
     ];
 }
 
-// A seat a real player holds over the network; both override the role preset's, and ClassJob 0
-// leaves the preset's job.
-public sealed record NetworkSeat(string Name, byte ClassJob)
+// A seat a real player holds over the network; all override the role preset's, ClassJob 0 leaves
+// the preset's job and a null Look its Lalafell stand-in.
+public sealed record NetworkSeat(string Name, byte ClassJob, PlayerLook? Look = null)
 {
     public PartyMemberPreset Dress(PartyMemberPreset preset) => preset with
     {
         Name = Name.Length > 0 ? Name : preset.Name,
         ClassJob = ClassJob != 0 ? ClassJob : preset.ClassJob,
+        Look = Look ?? preset.Look,
     };
+}
+
+// A real character's appearance as the game draws it: the 26 CustomizeData bytes, the 10 gear
+// slots as EquipmentModelId values (model, variant and both dyes) and both weapons.
+public sealed record PlayerLook(byte[] Customize, ulong[] Equipment, ulong MainHand, ulong OffHand)
+{
+    public const int CustomizeLength = 26;
+    public const int EquipmentSlots = 10;
+
+    public bool SameAs(PlayerLook? other) =>
+        other != null && MainHand == other.MainHand && OffHand == other.OffHand
+        && Customize.AsSpan().SequenceEqual(other.Customize) && Equipment.AsSpan().SequenceEqual(other.Equipment);
 }
 
 public sealed record PartyMemberPreset(
@@ -63,4 +77,5 @@ public sealed record PartyMemberPreset(
     uint Body,
     uint Hands,
     uint Legs,
-    uint Feet);
+    uint Feet,
+    PlayerLook? Look = null);

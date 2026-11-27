@@ -291,6 +291,8 @@ public sealed partial class MultiplayerManager : IDisposable
         OpenStream(host: true);
         Session.Names[MyPeerId] = DisplayName;
         Session.Jobs[MyPeerId] = LocalClassJob;
+        RefreshOwnLook();
+        SetOwnLook();
         Session.Builds[MyPeerId] = new PeerBuildInfo(PluginBuildInfo.Version, PluginBuildInfo.Checksum);
         // Toggled while an earlier server was tried (hostFallbacks).
         SetDebugBot(MyPeerId, debugBotControlled);
@@ -334,6 +336,7 @@ public sealed partial class MultiplayerManager : IDisposable
         relayAccessToken = Plugin.Config.TokenForRelay(relayUrl);
         SessionCode = normalized;
         Session = new MultiplayerSession();
+        RefreshOwnLook();
         OpenStream(host: false);
         // Seeded to now, or the host reads as silent since 1970 until its first broadcast.
         lastHostMessageMs = NowMs;
@@ -773,6 +776,7 @@ public sealed partial class MultiplayerManager : IDisposable
         Session.Names.Remove(peerId);
         stream?.Forget(peerId);
         Session.Builds.Remove(peerId);
+        Session.Looks.Remove(peerId);
         Session.DebugBots.Remove(peerId);
         peerConnectionIds.Remove(peerId);
         peerLastSeenMs.Remove(peerId);
@@ -795,21 +799,49 @@ public sealed partial class MultiplayerManager : IDisposable
         BroadcastLobbyState();
     }
 
-    // A job only reaches the roster on a Hello, so a lobby job change needs re-announcing.
+    // A job and look only reach the roster on a Hello, so a change in the lobby needs
+    // re-announcing. The look is read here, on the main thread, for Hellos sent from elsewhere.
     private byte announcedClassJob;
+    private PlayerLook? ownLook;
+    private const float LookCheckSeconds = 2f;
+    private float lookCheckTimer = LookCheckSeconds;
 
-    private void AnnounceOwnJobIfChanged()
+    private void AnnounceOwnJobIfChanged(float deltaSeconds)
     {
+        var lookChanged = false;
+        lookCheckTimer += deltaSeconds;
+        if (lookCheckTimer >= LookCheckSeconds)
+        {
+            lookCheckTimer = 0f;
+            lookChanged = RefreshOwnLook();
+        }
         var job = LocalClassJob;
-        if (job == 0 || job == announcedClassJob) return;
-        announcedClassJob = job;
+        var jobChanged = job != 0 && job != announcedClassJob;
+        if (!jobChanged && !lookChanged) return;
+        if (jobChanged) announcedClassJob = job;
         if (IsHost)
         {
-            Session.Jobs[MyPeerId] = job;
+            if (jobChanged) Session.Jobs[MyPeerId] = job;
+            SetOwnLook();
             BroadcastLobbyState();
             return;
         }
-        Transmit(NewHello(job));
+        Transmit(NewHello(LocalClassJob));
+    }
+
+    // True when what we'd share changed.
+    private bool RefreshOwnLook()
+    {
+        var look = Plugin.Config.ShareCharacterLook ? PlayerLooks.ReadLocal() ?? ownLook : null;
+        if (look == ownLook || look != null && look.SameAs(ownLook)) return false;
+        ownLook = look;
+        return true;
+    }
+
+    private void SetOwnLook()
+    {
+        if (ownLook != null) Session.Looks[MyPeerId] = ownLook;
+        else Session.Looks.Remove(MyPeerId);
     }
 
     // A Hello is the peer's only way into the roster and can be lost; retried until a lobby
@@ -1166,7 +1198,7 @@ public sealed partial class MultiplayerManager : IDisposable
     // peer's side.
     internal Dictionary<PartyRole, NetworkSeat> ClaimedRoleSeats() =>
         Session.ClaimedBy.Where(kv => kv.Value != MyPeerId)
-            .ToDictionary(kv => kv.Key, kv => new NetworkSeat(Session.NameOf(kv.Value), Session.JobOf(kv.Value)));
+            .ToDictionary(kv => kv.Key, kv => new NetworkSeat(Session.NameOf(kv.Value), Session.JobOf(kv.Value), Session.LookOf(kv.Value)));
 
     // After every seating and roster change. A seat nobody claimed is the host's bot.
     private void TagBotSeats()

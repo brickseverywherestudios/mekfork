@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using AnoMech.Core.Game.Party;
 
 namespace AnoMech.Multiplayer;
 
@@ -71,6 +72,18 @@ internal static class NetGuard
     // Written straight onto a BattleChara, whose sheet row the party list and nameplate resolve.
     public static byte ClassJob(byte value) =>
         value != 0 && Core.Native.Interfaces.Natives.Data.ClassJob(value) != null ? value : (byte)0;
+
+    // Shape and body only. Gear and weapon models are checked against the Item sheet where they
+    // are written (PlayerLooks.Write), so an unknown one leaves its slot empty.
+    public static PlayerLook? Look(PlayerLook? look)
+    {
+        if (look?.Customize is not { Length: PlayerLook.CustomizeLength } customize
+            || look.Equipment is not { Length: PlayerLook.EquipmentSlots } equipment) return null;
+        var race = customize[0];
+        var tribe = customize[4];
+        if (race is < 1 or > 8 || customize[1] > 1 || tribe != race * 2 - 1 && tribe != race * 2) return null;
+        return new PlayerLook((byte[])customize.Clone(), (ulong[])equipment.Clone(), look.MainHand, look.OffHand);
+    }
 
     public static bool InRange(int index, int count) => index >= 0 && index < count;
 
