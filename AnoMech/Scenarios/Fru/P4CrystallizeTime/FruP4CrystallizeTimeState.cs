@@ -44,12 +44,13 @@ public sealed class FruP4CrystallizeTimeState
     {
         var deck = rng.Shuffle(CrystallizeDebuff.RedAero, CrystallizeDebuff.RedAero, CrystallizeDebuff.RedIce, CrystallizeDebuff.RedIce,
             CrystallizeDebuff.BlueEruption, CrystallizeDebuff.BlueIce, CrystallizeDebuff.BlueDarkness, CrystallizeDebuff.BlueWater).ToArray();
-        if (overrides.PlayerDebuffs is { } wanted)
+        if (!PerRole.SeatsActive && overrides.PlayerDebuffs is { } wanted)
         {
             var choices = Enumerable.Range(0, 8).Where(i => wanted.Contains(deck[i])).ToArray();
             var chosen = choices[rng.Next(choices.Length)];
             (deck[(int)playerRole], deck[chosen]) = (deck[chosen], deck[(int)playerRole]);
         }
+        PinSeatDebuffs(deck, overrides.SeatDebuffs.Resolve(playerRole));
         foreach (var role in Enum.GetValues<PartyRole>()) debuffs[role] = overrides.Debuffs?[role] ?? deck[(int)role];
         SlowNorthwest = rng.NextBool();
         Corner = (CrystallizeCorner)rng.Next(4);
@@ -75,6 +76,23 @@ public sealed class FruP4CrystallizeTimeState
             Quietus = quietus.ToList(),
             SpiritTakerTarget = spiritTakerTarget,
         });
+    }
+
+    // Moves each assigned debuff onto its seat, taking it from a seat nobody pinned.
+    private static void PinSeatDebuffs(CrystallizeDebuff[] deck, IReadOnlyList<(PartyRole Role, CrystallizeDebuff Debuff)> assigned)
+    {
+        var pinned = new HashSet<int>();
+        foreach (var (role, debuff) in assigned)
+        {
+            var from = Enumerable.Range(0, 8).Where(i => !pinned.Contains(i) && deck[i] == debuff).DefaultIfEmpty(-1).First();
+            if (from < 0)
+            {
+                AnoMech.Core.DiagnosticLog.Warn($"[CrystallizeTime] {role} asked for {debuff}, but every one is already assigned -- left to the roll.");
+                continue;
+            }
+            (deck[(int)role], deck[from]) = (deck[from], deck[(int)role]);
+            pinned.Add((int)role);
+        }
     }
 
     public CrystallizeDebuff Debuff(PartyRole role) => debuffs[role];
