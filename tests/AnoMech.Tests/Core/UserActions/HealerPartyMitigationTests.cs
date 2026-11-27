@@ -52,22 +52,28 @@ public class HealerPartyMitigationTests
     private static (List<PartyRole> Near, List<PartyRole> Holders) Press(uint actionId, ushort statusId, PartyRole caster, PartyRole? target)
     {
         List<PartyRole>? near = null, holders = null;
+        var landedAtOnce = 0;
         ScenarioRun.Execute(typeof(FruP3ApocalypseScenario), 0, 1, new ScenarioRunOptions
         {
-            StopAt = 3.5f,
+            StopAt = 4.5f,
             UserActionsEnabled = true,
             Probe = p =>
             {
-                if (!p.Crossed(3f)) return;
                 var source = p.Member(caster)!;
-                var aim = target is { } role ? (ulong)p.Member(role)!.GameObjectId : 0UL;
-                JobActions.ApplyEffects(source, actionId, aim, new Random(1));
                 var members = Enum.GetValues<PartyRole>().Select(r => (Role: r, Member: p.Member(r))).Where(m => m.Member != null).ToList();
-                near = members.Where(m => Distance(source, m.Member!) < 25f).Select(m => m.Role).ToList();
-                holders = members.Where(m => m.Member!.HasStatus(statusId)).Select(m => m.Role).ToList();
+                if (p.Crossed(3f))
+                {
+                    var aim = target is { } role ? (ulong)p.Member(role)!.GameObjectId : 0UL;
+                    JobActions.ApplyEffects(source, actionId, aim, new Random(1));
+                    near = members.Where(m => Distance(source, m.Member!) < 25f).Select(m => m.Role).ToList();
+                    landedAtOnce = members.Count(m => m.Member!.HasStatus(statusId));
+                }
+                if (p.Crossed(4f))
+                    holders = members.Where(m => m.Member!.HasStatus(statusId)).Select(m => m.Role).ToList();
             },
         });
         Assert.That(holders, Is.Not.Null, "the probe never ran");
+        Assert.That(landedAtOnce, Is.LessThanOrEqualTo(1), "the status rippled out instead of landing on everyone at once");
         return (near!, holders!);
     }
 

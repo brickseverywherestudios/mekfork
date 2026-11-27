@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 using AnoMech.Core.EnemyActions;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Native.Implementations;
@@ -86,15 +88,37 @@ internal sealed class TargetStatusEffect(ushort statusId, float duration, int st
 {
     public void Apply(ActionContext ctx)
     {
-        var roles = new List<PartyRole>();
-        foreach (var member in ActionTargets.Friendly(ctx))
-        {
-            member.RemoveStatus(statusId);
-            member.AddStatusParam(statusId, stacks, duration);
-            if (member is ISimPartyMember slot) roles.Add(slot.Role);
-        }
-        HostReport.RoleStatus(roles, statusId, duration, stacks);
+        StatusRipple.Grant(ctx.Caster, ActionTargets.Friendly(ctx), statusId, duration, stacks);
     }
+}
+
+// A party-wide grant lands nearest first, one member at a time, as retail's pop-ups ripple out
+// from the caster instead of all appearing on one frame.
+internal static class StatusRipple
+{
+    // UNVERIFIED: the gap between two members' pop-ups.
+    private const float StepSeconds = 0.1f;
+
+    public static void Grant(SimCharacter caster, IEnumerable<SimCharacter> members, ushort statusId, float duration, int stacks)
+    {
+        var events = Plugin.Game?.World.Events;
+        var ordered = members.OrderBy(m => Vector2.DistanceSquared(Flat(m), Flat(caster))).ToList();
+        for (var i = 0; i < ordered.Count; i++)
+        {
+            var member = ordered[i];
+            if (i == 0 || events == null) Land(member, statusId, duration, stacks);
+            else events.Add(i * StepSeconds, () => { if (member.IsActive) Land(member, statusId, duration, stacks); });
+        }
+    }
+
+    private static void Land(SimCharacter member, ushort statusId, float duration, int stacks)
+    {
+        member.RemoveStatus(statusId);
+        member.AddStatusParam(statusId, stacks, duration);
+        if (member is ISimPartyMember slot) HostReport.RoleStatus([slot.Role], statusId, duration, stacks);
+    }
+
+    private static Vector2 Flat(SimCharacter c) => new(c.Position.X, c.Position.Z);
 }
 
 // Leaf: grant a status to the other party members within `radius` of the caster, for a self-cast
@@ -104,15 +128,9 @@ internal sealed class PartyStatusEffect(ushort statusId, float duration, float r
     public void Apply(ActionContext ctx)
     {
         if (Plugin.Game is not { } game) return;
-        var roles = new List<PartyRole>();
-        foreach (var member in game.World.Party.ActiveMembers())
-        {
-            if (ReferenceEquals(member, ctx.Caster) || !ActionTargets.InRange(ctx.Caster, member, radius)) continue;
-            member.RemoveStatus(statusId);
-            member.AddStatusParam(statusId, 0, duration);
-            if (member is ISimPartyMember slot) roles.Add(slot.Role);
-        }
-        HostReport.RoleStatus(roles, statusId, duration, 0);
+        var members = game.World.Party.ActiveMembers()
+            .Where(m => !ReferenceEquals(m, ctx.Caster) && ActionTargets.InRange(ctx.Caster, m, radius));
+        StatusRipple.Grant(ctx.Caster, members, statusId, duration, 0);
     }
 }
 
