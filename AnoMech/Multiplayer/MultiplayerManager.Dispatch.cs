@@ -11,6 +11,7 @@ using AnoMech.Core.Game.Ai;
 using AnoMech.Core.Game.Geometry;
 using AnoMech.Core.Game.Party;
 using AnoMech.Core.Map;
+using AnoMech.Core.Native.Interfaces;
 using AnoMech.Core.SimObjects;
 using AnoMech.Core.UserActions;
 using AnoMech.Network;
@@ -261,6 +262,16 @@ public sealed partial class MultiplayerManager
                     enemy.AddStatusParam(applied.StatusId, applied.Param, duration);
                     DiagnosticLog.Info($"[Multiplayer] Host: applied {who}'s reported status {applied.StatusId} (duration={duration:F1}) to enemy 0x{entityId:X}.");
                 }
+                break;
+            }
+            case PeerMarkedMessage marked when IsHost:
+            {
+                if (Session.RoleOf(marked.PeerId) is null || !Enum.IsDefined(marked.Target)) break;
+                if (marked.Sign is < -1 or > (int)Sign.Attack8 || marked.Family is < -1 or > (int)MarkFamily.Ignore) break;
+                if (!Plugin.Game.World.Map.IsInInstance) break;
+                DiagnosticLog.Info($"[Multiplayer] Host: {Session.NameOf(marked.PeerId)} marks {marked.Target}.");
+                SimMarkers.Apply(Plugin.Game.World.Party, marked.Sign >= 0 ? (Sign)marked.Sign : null,
+                    marked.Family >= 0 ? (MarkFamily)marked.Family : null, marked.Target);
                 break;
             }
             case PeerAppliedRoleStatusMessage applied when IsHost:

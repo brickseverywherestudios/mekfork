@@ -77,6 +77,7 @@ namespace AnoMech.Multiplayer;
 [JsonDerivedType(typeof(TopP5OmegaHelloWorld2UpdateMessage), "topP5OmegaHelloWorld2Update")]
 [JsonDerivedType(typeof(PeerAppliedEnemyStatusMessage), "peerAppliedEnemyStatus")]
 [JsonDerivedType(typeof(PeerAppliedRoleStatusMessage), "peerAppliedRoleStatus")]
+[JsonDerivedType(typeof(PeerMarkedMessage), "peerMarked")]
 [JsonDerivedType(typeof(KickMessage), "kick")]
 [JsonDerivedType(typeof(ActedMessage), "acted")]
 [JsonDerivedType(typeof(StreamStateMessage), "streamState")]
@@ -418,3 +419,7 @@ public sealed record FruP2DiamondDustAiReplayStateMessage(int FirstIcicle, bool 
     : MpMessage, IScenarioReplayStateMessage;
 
 public sealed record FruP5ParadiseRegainedAiReplayStateMessage(int Rotation, bool EastSecond, bool DarkFirst) : MpMessage, IScenarioReplayStateMessage;
+
+// Peer -> host: a head marker the peer placed with /mk. Sign and Family are -1 when unused; both
+// -1 takes the target's marker off.
+public sealed record PeerMarkedMessage(Guid PeerId, PartyRole Target, int Sign, int Family) : MpMessage, IPeerMessage;
