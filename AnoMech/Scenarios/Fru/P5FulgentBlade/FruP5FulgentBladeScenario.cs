@@ -21,6 +21,8 @@ public sealed class FruP5FulgentBladeScenario : IMultiplayerReplayable
 {
     public string Name => "Fulgent Blade";
     public IPhase Phase => FruZone.P5;
+    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at Pandora turning targetable.
+    public float BgmSecondsAtStart => 3.7f;
     public bool SupportsSolo => true;
     public bool SupportsMultiplayer => true;
 

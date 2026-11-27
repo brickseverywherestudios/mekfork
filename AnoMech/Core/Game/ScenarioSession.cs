@@ -295,7 +295,12 @@ public sealed class ScenarioSession
         var phase = Scenario.Phase;
         DiagnosticLog.Info($"[Bgm] Suppress scenario BGM: {(Plugin.Config.SuppressBgm ? "on" : "off")}.");
         if (!Plugin.Config.SuppressBgm && phase.Bgm != 0)
-            world.PlayBgm(phase.Bgm, Scenario.BgmSecondsAtStart);
+        {
+            // The nudge only shifts a track already set to start part-way in.
+            var secondsIn = Scenario.BgmSecondsAtStart;
+            if (secondsIn > 0f) secondsIn = MathF.Max(0.01f, secondsIn + Plugin.Config.BgmOffsetSeconds);
+            world.PlayBgm(phase.Bgm, secondsIn);
+        }
     }
 
     // The selected preset, or [0] as the default.
