@@ -17,8 +17,8 @@ public sealed class FruP3ApocalypseScenario : IMultiplayerReplayable
 {
     public string Name => "Apocalypse";
     public IPhase Phase => FruZone.P3;
-    // UNVERIFIED: estimated from a pull's timeline, assuming the phase's track starts at Junction.
-    public float BgmSecondsAtStart => 101.8f;
+    // UNVERIFIED: the phase's track starts about 15s before Junction, by ear in playtesting.
+    public float BgmSecondsAtStart => 116.8f;
     public bool SupportsMultiplayer => true;
 
     public IReadOnlyList<IScenarioAi> AiStrats => [new FruP3ApocalypseAi(), new FruP3ApocalypseJpAi()];
